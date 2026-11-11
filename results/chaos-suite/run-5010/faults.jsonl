@@ -1,6 +1,0 @@
-{"timestamp_ns":1794384125243778100,"timestamp":"2026-11-11T13:32:05.2437781+05:30","type":"PAUSE_LEADER_ZOMBIE_START","target":"orchestra-node-2","details":"paused leader container for 7.5s (lease TTL=5s) to trigger zombie fencing check"}
-{"timestamp_ns":1794384132848104100,"timestamp":"2026-11-11T13:32:12.8481041+05:30","type":"PAUSE_LEADER_ZOMBIE_END","target":"orchestra-node-2","details":"unpaused zombie ex-leader; subsequent mutating writes must be rejected by fencing CAS"}
-{"timestamp_ns":1794384132942893800,"timestamp":"2026-11-11T13:32:12.9428938+05:30","type":"RESTART_ETCD","target":"orchestra-etcd2","details":"restarted etcd consensus node via docker restart"}
-{"timestamp_ns":1794384135743933900,"timestamp":"2026-11-11T13:32:15.7439339+05:30","type":"PAUSE_LEADER_ZOMBIE_START","target":"orchestra-node-3","details":"paused leader container for 7.5s (lease TTL=5s) to trigger zombie fencing check"}
-{"timestamp_ns":1794384143334115900,"timestamp":"2026-11-11T13:32:23.3341159+05:30","type":"PAUSE_LEADER_ZOMBIE_END","target":"orchestra-node-3","details":"unpaused zombie ex-leader; subsequent mutating writes must be rejected by fencing CAS"}
-{"timestamp_ns":1794384143424643400,"timestamp":"2026-11-11T13:32:23.4246434+05:30","type":"KILL_WORKER","target":"distributed-scheduler-worker-4","details":"killed worker container via docker kill"}

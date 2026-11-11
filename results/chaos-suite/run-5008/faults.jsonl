@@ -1,2 +1,0 @@
-{"timestamp_ns":1794384068549065200,"timestamp":"2026-11-11T13:31:08.5490652+05:30","type":"KILL_WORKER","target":"distributed-scheduler-worker-5","details":"killed worker container via docker kill"}
-{"timestamp_ns":1794384072049236400,"timestamp":"2026-11-11T13:31:12.0492364+05:30","type":"KILL_WORKER","target":"distributed-scheduler-worker-2","details":"killed worker container via docker kill"}

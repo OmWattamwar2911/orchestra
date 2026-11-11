@@ -1,10 +1,52 @@
+# Binaries and build artifacts
 bin/
 dist/
 web/dist/
-node_modules/
-web/node_modules/
 *.exe
 *.test
 *.out
+*.dll
+*.so
+*.dylib
+
+# Node dependencies
+node_modules/
+web/node_modules/
+
+# Environment files (keep committed .env.example)
+.env
+.env.*
+!.env.example
+
+# Go test coverage and cache
+*.coverprofile
+coverage.out
+coverage.html
+
+# IDEs and Editors
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Operating System files
+.DS_Store
+Thumbs.db
+ehthumbs.db
+[Dd]esktop.ini
+
+# Docker, etcd, and local storage state
+.etcd/
+data/
+tmp/
+
+# Logs
 *.log
 
+# Test runner reports and temporary artifacts
+playwright-report/
+test-results/
+
+# Raw chaos and evidence log streams (keep summary *.json files)
+results/**/*.jsonl

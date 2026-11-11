@@ -1,2 +1,0 @@
-{"timestamp_ns":1794383683737757400,"timestamp":"2026-11-11T13:24:43.7377574+05:30","type":"KILL_WORKER","target":"distributed-scheduler-worker-2","details":"killed worker container via docker kill"}
-{"timestamp_ns":1794383687290798100,"timestamp":"2026-11-11T13:24:47.2907981+05:30","type":"KILL_LEADER","target":"orchestra-node-1","details":"killed active orchestrator leader via docker kill"}

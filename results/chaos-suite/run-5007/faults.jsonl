@@ -1,5 +1,0 @@
-{"timestamp_ns":1794384037521768500,"timestamp":"2026-11-11T13:30:37.5217685+05:30","type":"RESTART_ETCD","target":"orchestra-etcd3","details":"restarted etcd consensus node via docker restart"}
-{"timestamp_ns":1794384041023453100,"timestamp":"2026-11-11T13:30:41.0234531+05:30","type":"KILL_LEADER","target":"orchestra-node-2","details":"killed active orchestrator leader via docker kill"}
-{"timestamp_ns":1794384044524279100,"timestamp":"2026-11-11T13:30:44.5242791+05:30","type":"KILL_LEADER","target":"orchestra-node-2","details":"killed active orchestrator leader via docker kill"}
-{"timestamp_ns":1794384048022046600,"timestamp":"2026-11-11T13:30:48.0220466+05:30","type":"DISCONNECT_WORKER_START","target":"distributed-scheduler-worker-1","details":"disconnected distributed-scheduler-worker-1 from distributed-scheduler_orchestra-net for 2.5s"}
-{"timestamp_ns":1794384048725324400,"timestamp":"2026-11-11T13:30:48.7253244+05:30","type":"DISCONNECT_WORKER_END","target":"distributed-scheduler-worker-1","details":"reconnected distributed-scheduler-worker-1 to distributed-scheduler_orchestra-net"}

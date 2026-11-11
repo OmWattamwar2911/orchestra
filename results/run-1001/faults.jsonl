@@ -1,3 +1,0 @@
-{"timestamp_ns":1794382253910375300,"timestamp":"2026-11-11T13:00:53.9103753+05:30","type":"PAUSE_LEADER_ZOMBIE_START","target":"orchestra-node-3","details":"paused leader container for 7.5s (lease TTL=5s) to trigger zombie fencing check"}
-{"timestamp_ns":1794382261541387000,"timestamp":"2026-11-11T13:01:01.541387+05:30","type":"PAUSE_LEADER_ZOMBIE_END","target":"orchestra-node-3","details":"unpaused zombie ex-leader; subsequent mutating writes must be rejected by fencing CAS"}
-{"timestamp_ns":1794382261652256400,"timestamp":"2026-11-11T13:01:01.6522564+05:30","type":"RESTART_ETCD","target":"orchestra-etcd1","details":"restarted etcd consensus node via docker restart","error":"exit status 1"}
