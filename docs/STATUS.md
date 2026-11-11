@@ -2,7 +2,7 @@
 
 This living status document tracks the verification state, test evidence, and known limitations for every requirement in Orchestra.
 
-Last Updated: Phase 5 Chaos Harness & Invariant Verification Complete (2026-11-11)
+Last Updated: Phase 6 Documentation & Measured Results Complete (2026-11-11)
 
 ---
 
