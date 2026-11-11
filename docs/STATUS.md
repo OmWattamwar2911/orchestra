@@ -2,7 +2,7 @@
 
 This living status document tracks the verification state, test evidence, and known limitations for every requirement in Orchestra.
 
-Last Updated: Phase 3 Features & Security Complete (2026-11-11)
+Last Updated: Phase 4 End-to-End Verification Complete (2026-11-11)
 
 ---
 
@@ -45,15 +45,18 @@ Last Updated: Phase 3 Features & Security Complete (2026-11-11)
 
 ---
 
-## 3. Chaos Harness & Independent Checker
+## 3. End-to-End Verification & Chaos Harness
 
 | Requirement | Status | Evidence / Location | Known Limitations / Notes |
 | :--- | :---: | :--- | :--- |
+| **End-to-End Automated Script (PowerShell & Bash)** | **DONE** | `scripts/e2e.ps1`<br>`scripts/e2e.sh`<br>`results/e2e/e2e_run.txt` | Auto-detects cluster, verifies Diamond DAG, worker failover mid-task, leader failover mid-workflow, zombie leader fencing CAS barrier, and runs offline checker. |
+| **Docker Multi-Stage Image Builds** | **DONE** | `deploy/Dockerfile`<br>`deploy/Dockerfile.web`<br>`docker-compose.yml` | Builds clean stripped alpine binaries for `orchestrator`, `worker`, `orchctl`, and multi-stage Nginx container for `web`. |
+| **Zombie Leader Fencing CAS Barrier** | **DONE** | `scripts/e2e.ps1` (Step 5)<br>`internal/election/leader.go`<br>`results/e2e/checker_report.json` | Paused leader lease expires after 5s TTL; unpaused zombie leader's mutating writes are strictly rejected by etcd ModRevision CAS check. |
 | **Chaos Fault Generator** | **DONE** | `cmd/chaos/` | Worker SIGKILLs, leader SIGSTOP zombie pauses, network drops. |
-| **Independent Invariant Checker** | **DONE** | `cmd/checker/`, `internal/checker/` | Verifies Dependency Order, Single Commit, No Lost Tasks, and Fencing Barrier. |
+| **Independent Invariant Checker** | **DONE** | `cmd/checker/`, `internal/checker/`<br>`cmd/checker/collector.go` | Verifies Dependency Order, Single Commit, No Lost Tasks, Workflow Termination, and Fencing Barrier. Live etcd artifact collector integrated. |
 | **Checker Mutation Tests** | **DONE** | `cmd/checker/mutation_test.go` | Proves checker fails when synthetic violations are injected. |
-| **Process-Based Chaos Execution** | **PARTIAL** | `cmd/chaos/` | Needs pure process-based mode when Docker daemon is not used. |
-| **10 Seeded Runs & summary.json** | **PARTIAL** | `results/` | Initial runs exist; needs verified refreshed suite and summary export. |
+| **Process-Based Chaos Execution** | **DONE** | `cmd/chaos/`, `scripts/e2e.ps1` | Supports both containerized Docker Compose cluster and local process-based execution. |
+| **10 Seeded Runs & summary.json** | **PARTIAL** | `results/` | Initial runs exist; Phase 5 will execute and export the full refreshed suite. |
 
 ---
 

@@ -153,105 +153,107 @@ export function devMockPlugin(): Plugin {
     });
   }
 
-  // Simulation loop: progress running tasks
-  setInterval(() => {
-    workflows.forEach(wf => {
-      if (wf.workflow.status.state !== 1) return; // not running
-
-      // Find any RUNNING tasks and complete them if ready
-      let changed = false;
-      const completedSet = new Set(wf.tasks.filter(t => t.status.state === 5).map(t => t.spec.id));
-
-      wf.tasks.forEach(task => {
-        if (task.status.state === 4 /* RUNNING */) {
-          // 30% chance to complete on tick
-          if (Math.random() > 0.4) {
-            task.status.state = 5; // COMPLETED
-            task.status.completed_at = Date.now();
-            completedSet.add(task.spec.id);
-            changed = true;
-
-            const ev = {
-              timestamp: Date.now(),
-              type: 'TASK_COMPLETED',
-              workflow_id: wf.workflow.spec.id,
-              task_id: task.spec.id,
-              old_state: 'RUNNING',
-              new_state: 'COMPLETED',
-              worker_id: task.status.assigned_worker,
-              term,
-            };
-            recentEvents.unshift(ev);
-            broadcastSSE('task_event', ev);
-          }
-        }
-      });
-
-      // Find PENDING tasks whose dependencies are met and move to READY -> RUNNING
-      wf.tasks.forEach(task => {
-        if (task.status.state === 1 /* PENDING */) {
-          const deps = task.spec.dependencies || [];
-          const allMet = deps.every(d => completedSet.has(d));
-          if (allMet) {
-            task.status.state = 4; // RUNNING
-            task.status.current_attempt = 1;
-            task.status.started_at = Date.now();
-            const w = workers[Math.floor(Math.random() * workers.length)];
-            task.status.assigned_worker = w.worker_id;
-            changed = true;
-
-            const ev = {
-              timestamp: Date.now(),
-              type: 'TASK_SCHEDULED',
-              workflow_id: wf.workflow.spec.id,
-              task_id: task.spec.id,
-              old_state: 'READY',
-              new_state: 'RUNNING',
-              worker_id: w.worker_id,
-              term,
-            };
-            recentEvents.unshift(ev);
-            broadcastSSE('task_event', ev);
-          }
-        }
-      });
-
-      // Check if all tasks completed
-      const allDone = wf.tasks.every(t => t.status.state === 5);
-      if (allDone) {
-        wf.workflow.status.state = 2; // SUCCEEDED
-        wf.workflow.status.completed_at = Date.now();
-        broadcastSSE('task_event', {
-          timestamp: Date.now(),
-          type: 'WORKFLOW_SUCCEEDED',
-          workflow_id: wf.workflow.spec.id,
-          term,
-        });
-      }
-
-      if (changed) {
-        wf.workflow.status.completed_tasks = wf.tasks.filter(t => t.status.state === 5).length;
-      }
-    });
-
-    // Update worker loads
-    workers.forEach(w => {
-      let load = 0;
-      workflows.forEach(wf => {
-        wf.tasks.forEach(t => {
-          if (t.status.assigned_worker === w.worker_id && t.status.state === 4) {
-            load++;
-          }
-        });
-      });
-      w.current_tasks = load;
-      w.running_tasks = load;
-    });
-  }, 2500);
-
   return {
     name: 'dev-mock-backend',
+    apply: 'serve',
     configureServer(server) {
+      // Simulation loop: progress running tasks (only during 'vite' dev mode)
+      const timer = setInterval(() => {
+      workflows.forEach(wf => {
+        if (wf.workflow.status.state !== 1) return; // not running
+  
+        // Find any RUNNING tasks and complete them if ready
+        let changed = false;
+        const completedSet = new Set(wf.tasks.filter(t => t.status.state === 5).map(t => t.spec.id));
+  
+        wf.tasks.forEach(task => {
+          if (task.status.state === 4 /* RUNNING */) {
+            // 30% chance to complete on tick
+            if (Math.random() > 0.4) {
+              task.status.state = 5; // COMPLETED
+              task.status.completed_at = Date.now();
+              completedSet.add(task.spec.id);
+              changed = true;
+  
+              const ev = {
+                timestamp: Date.now(),
+                type: 'TASK_COMPLETED',
+                workflow_id: wf.workflow.spec.id,
+                task_id: task.spec.id,
+                old_state: 'RUNNING',
+                new_state: 'COMPLETED',
+                worker_id: task.status.assigned_worker,
+                term,
+              };
+              recentEvents.unshift(ev);
+              broadcastSSE('task_event', ev);
+            }
+          }
+        });
+  
+        // Find PENDING tasks whose dependencies are met and move to READY -> RUNNING
+        wf.tasks.forEach(task => {
+          if (task.status.state === 1 /* PENDING */) {
+            const deps = task.spec.dependencies || [];
+            const allMet = deps.every(d => completedSet.has(d));
+            if (allMet) {
+              task.status.state = 4; // RUNNING
+              task.status.current_attempt = 1;
+              task.status.started_at = Date.now();
+              const w = workers[Math.floor(Math.random() * workers.length)];
+              task.status.assigned_worker = w.worker_id;
+              changed = true;
+  
+              const ev = {
+                timestamp: Date.now(),
+                type: 'TASK_SCHEDULED',
+                workflow_id: wf.workflow.spec.id,
+                task_id: task.spec.id,
+                old_state: 'READY',
+                new_state: 'RUNNING',
+                worker_id: w.worker_id,
+                term,
+              };
+              recentEvents.unshift(ev);
+              broadcastSSE('task_event', ev);
+            }
+          }
+        });
+  
+        // Check if all tasks completed
+        const allDone = wf.tasks.every(t => t.status.state === 5);
+        if (allDone) {
+          wf.workflow.status.state = 2; // SUCCEEDED
+          wf.workflow.status.completed_at = Date.now();
+          broadcastSSE('task_event', {
+            timestamp: Date.now(),
+            type: 'WORKFLOW_SUCCEEDED',
+            workflow_id: wf.workflow.spec.id,
+            term,
+          });
+        }
+  
+        if (changed) {
+          wf.workflow.status.completed_tasks = wf.tasks.filter(t => t.status.state === 5).length;
+        }
+      });
+  
+      // Update worker loads
+      workers.forEach(w => {
+        let load = 0;
+        workflows.forEach(wf => {
+          wf.tasks.forEach(t => {
+            if (t.status.assigned_worker === w.worker_id && t.status.state === 4) {
+              load++;
+            }
+          });
+        });
+        w.current_tasks = load;
+        w.running_tasks = load;
+      });
+      }, 2500);
+      server.httpServer?.on('close', () => clearInterval(timer));
+
       server.middlewares.use((req: IncomingMessage, res: ServerResponse, next) => {
         const url = req.url || '';
 

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -33,11 +34,23 @@ type AggregateReport struct {
 
 func main() {
 	var (
-		runDirFlag     = flag.String("run-dir", "", "Path to a specific run directory (e.g. results/run-1001)")
-		resultsDirFlag = flag.String("results-dir", "results", "Path to results directory containing multiple run-* directories")
-		outputPath     = flag.String("output", "", "Optional path to save JSON verification report")
+		runDirFlag      = flag.String("run-dir", "", "Path to a specific run directory (e.g. results/run-1001)")
+		resultsDirFlag  = flag.String("results-dir", "results", "Path to results directory containing multiple run-* directories")
+		outputPath      = flag.String("output", "", "Optional path to save JSON verification report")
+		collectEtcdFlag = flag.String("collect-etcd", "", "Comma-separated etcd endpoints to dump artifacts from prior to verification")
+		workerLogsFlag  = flag.String("worker-logs-dir", "", "Optional directory to extract worker evidence logs")
 	)
 	flag.Parse()
+
+	if *collectEtcdFlag != "" && *runDirFlag != "" {
+		endpoints := strings.Split(*collectEtcdFlag, ",")
+		fmt.Printf("Collecting live cluster artifacts from etcd (%v) into %s...\n", endpoints, *runDirFlag)
+		if err := CollectLiveCluster(context.Background(), endpoints, *runDirFlag, *workerLogsFlag); err != nil {
+			fmt.Fprintf(os.Stderr, "Error collecting live cluster artifacts: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Println("Live cluster artifacts collected successfully.")
+	}
 
 	var runDirs []string
 

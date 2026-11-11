@@ -50,3 +50,6 @@ test-results/
 
 # Raw chaos and evidence log streams (keep summary *.json files)
 results/**/*.jsonl
+results/**/raw_evidence/
+results/**/*.yaml
+results/e2e/workflows.json
