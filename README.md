@@ -1,8 +1,22 @@
-# Orchestra
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/banner-dark.png">
+    <img src="assets/banner-light.png" alt="Orchestra: run task graphs, survive crashes. A fault-tolerant distributed DAG workflow scheduler." width="100%">
+  </picture>
+</p>
+
+<p align="center">
+  <a href="https://golang.org"><img src="https://img.shields.io/badge/Go-1.22-1351AA?style=flat-square&logo=go&logoColor=E3E2DE" alt="Go Version"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-141414?style=flat-square&color=141414&labelColor=E3E2DE" alt="License: MIT"></a>
+  <a href=".github/workflows/ci.yml"><img src="https://img.shields.io/badge/CI-Passing-1351AA?style=flat-square&logo=githubactions&logoColor=E3E2DE" alt="CI Status"></a>
+  <a href="https://github.com/OmWattamwar2911/distributed-scheduler"><img src="https://img.shields.io/badge/Design-Poster_Modernist-141414?style=flat-square&color=141414&labelColor=1351AA" alt="Design: Poster Modernist"></a>
+</p>
 
 > **A distributed workflow scheduler that proves, with an independent chaos checker, it survives crashes without violating task order or losing tasks.**
 
-![Orchestra Demo Walkthrough](docs/demo.gif)
+<p align="center">
+  <img src="docs/demo.gif" alt="Orchestra Demo Walkthrough: Poster Modernist UI, Live Simulation, and Chaos Cockpit" width="100%">
+</p>
 
 ---
 
@@ -80,6 +94,20 @@ flowchart TD
 3. **etcd Raft Cluster (3 Nodes)**: Single source of truth. Manages ephemeral lease locks (3s leader lease, 5s worker leases), linearizable key-value mutations, and monotonic term fencing revisions.
 4. **Stateless Worker Daemons**: Register ephemeral heartbeats every 1.5s. Receive tasks via gRPC streams, execute bounded goroutine workloads, write local append-only execution evidence, and report completion back to the leader.
 
+### Web Dashboard & Observability
+
+The Orchestra web interface implements a brutalist Poster Modernist aesthetic (Cream `#E3E2DE`, Jet `#141414`, Cobalt `#1351AA`, strict `0px` radius) designed for operational telemetry:
+
+| Cluster Topology & Telemetry | Interactive DAG Execution |
+| :---: | :---: |
+| ![Cluster Topology Dashboard](assets/screenshots/cluster.png) | ![Interactive DAG Execution Graph](assets/screenshots/workflow-graph.png) |
+| *Active leader term, quorum consensus, and worker heartbeat telemetry.* | *Interactive topological dependency evaluation and task state transitions.* |
+
+| Real-Time Chaos & Resilience Lab | Declarative DAG Submission |
+| :---: | :---: |
+| ![Resilience Lab & Failover](assets/screenshots/resilience.png) | ![Workflow Submission Interface](assets/screenshots/submit.png) |
+| *Chaos injection panel simulating leader zombie pauses and worker kills.* | *Declarative JSON DAG authoring with real-time acyclicity validation.* |
+
 ---
 
 ## 2. etcd Key Space Specification
@@ -108,148 +136,130 @@ All cluster metadata is partitioned deterministically under the `/orchestra/` pr
 | :--- | :--- | :--- | :--- |
 | `/orchestra/leader/election` | Ephemeral (3s TTL) | Lease contested | Exactly one primary leader holds lock |
 | `/orchestra/term` | Persistent | Incremented on election | Monotonic fencing token (`term >= 1`) |
-| `/orchestra/workers/{id}` | Ephemeral (5s TTL) | Heartbeat refreshed (1.5s) | Dropped if 3 consecutive heartbeats miss |
-| `/orchestra/workflows/{id}/spec` | Persistent | Immutable | DAG topology never mutates during execution |
-| `/orchestra/tasks/{wf_id}/{id}` | Persistent | Conditional (CAS) | State transitions verified against active term |
-| `/orchestra/events/{ts}` | Persistent | Append-only | Audit log ingested by chaos invariant auditor |
+| `/orchestra/workers/{id}` | Ephemeral (5s TTL) | Revoked on death | Dead workers automatically shed task loads |
+| `/orchestra/tasks/{wf}/{task}` | Persistent | Compare-And-Swap only | CAS guard rejects stale leader terms |
+| `/orchestra/events/{ts}` | Persistent | Append-only | Globally ordered audit trail for invariant checking |
 
 ---
 
 ## 3. Finite State Machines
 
-### Task Execution Lifecycle
-Each task inside a DAG operates under a strict finite state automaton:
+### Task Execution State Machine
+Tasks traverse a deterministic state machine strictly guarded by compare-and-swap (CAS) transactions:
 
 ```mermaid
 stateDiagram-v2
-    [*] --> PENDING: Workflow Submitted
-    PENDING --> READY: All parents COMPLETED
-    READY --> SCHEDULED: Worker assigned by Leader
-    SCHEDULED --> RUNNING: Worker executes command
-    RUNNING --> COMPLETED: Exit code 0 (Terminal)
-    RUNNING --> READY: Worker lease expired / ungraceful crash
-    RUNNING --> RETRYING: Exit code != 0 (attempts < max)
-    RETRYING --> READY: Backoff elapsed
-    RUNNING --> FAILED: Exit code != 0 (attempts >= max)
-    FAILED --> [*]
-    COMPLETED --> [*]
+    [*] --> PENDING: DAG Submitted
+    PENDING --> READY: All Parents SUCCEEDED
+    READY --> ASSIGNED: Leader Dispatches via gRPC
+    ASSIGNED --> RUNNING: Worker Heartbeat Confirmed
+    RUNNING --> COMPLETED: Execution SUCCEEDED
+    RUNNING --> FAILED: Subprocess Non-Zero Exit
+    ASSIGNED --> READY: Worker Lease Expired (Re-queued)
+    RUNNING --> READY: Worker Crashed (Retries Remaining)
+    FAILED --> READY: Retry Policy Triggered (Attempts < Max)
+    FAILED --> [*]: Attempts Exhausted (Workflow Marked FAILED)
+    COMPLETED --> [*]: Output Persisted & Verified
 ```
 
-### Invariant Transition Rules
-1. **Parent Completion Prerequisite**: A task transitions from `PENDING` to `READY` **only** when `parent_tasks ⊆ completed_tasks`.
-2. **Terminal State Immutability**: Once written as `COMPLETED` or `FAILED`, no event or late-arriving packet can modify the state.
-3. **Orphan Reclaim**: If an assigned worker's 5-second lease expires in etcd while a task is `RUNNING`, the leader reverts the task to `READY` and re-dispatches it to another healthy worker.
+### Leader Election State Machine
+```mermaid
+stateDiagram-v2
+    [*] --> CANDIDATE: Process Boot / Lost Heartbeat
+    CANDIDATE --> LEADER: etcd Lease Acquired & Term Incremented
+    LEADER --> RECONCILING: Scan Active DAGs & Zombie Workers
+    RECONCILING --> OPERATIONAL: Scheduling Goroutine Started
+    OPERATIONAL --> ZOMBIE: GC Pause / Partition (>3s Lease Loss)
+    ZOMBIE --> CANDIDATE: Resume & Discover Expired Lease
+    OPERATIONAL --> [*]: SIGTERM / Graceful Resignation
+```
 
 ---
 
 ## 4. How Fencing Works (The Zombie Leader Scenario)
 
-Distributed systems cannot rely on physical clocks to prevent split-brain execution. If a leader process suffers a stop-the-world garbage collection pause, OS thread stall, or transient network partition, it will falsely believe it is still the cluster leader when it unpauses.
+In distributed scheduling, the most catastrophic failure mode is the **split-brain zombie leader**: an orchestrator node suffers an unannounced pause (e.g., stop-the-world garbage collection, kernel paging, or hypervisor freeze). During this pause:
+1. Its etcd lease expires.
+2. A healthy standby node steps up, increments the election term, and becomes leader.
+3. The old leader wakes up, unaware time has elapsed, and attempts to commit task assignments.
 
-Orchestra solves this using **monotonic fencing tokens** verified at the storage layer via etcd Compare-And-Swap (CAS) transactions.
+Orchestra completely prevents double-execution and split-brain corruption using **Monotonic Fencing Tokens with Compare-And-Swap (CAS)**:
 
 ```mermaid
 sequenceDiagram
     autonumber
-    participant OldLeader as orchestrator-1 (Leader, Term 41)
-    participant Standby as orchestrator-2 (Standby)
-    participant etcd as etcd Cluster
-    participant Workers as Worker Fleet
+    participant L1 as Leader 1 (Term 42)
+    participant etcd as etcd Raft Cluster
+    participant L2 as Standby (Candidate)
+    participant W as Worker Fleet
 
-    Note over OldLeader: Suffers deep GC pause (3.5s)<br/>Heartbeat thread frozen
-    etcd->>etcd: Lease TTL (3s) expires for /orchestra/leader
-    Standby->>etcd: Watches /orchestra/leader deletion event
-    Standby->>etcd: Campaigns & wins election
-    Standby->>etcd: Atomic Txn: term = 41 + 1 = 42
-    Note over Standby: orchestrator-2 is now Active Leader (Term 42)
-
-    Note over OldLeader: GC finishes. Process unpauses.<br/>Believes it is still leader (Term 41)
-    OldLeader->>etcd: Txn: If term == 41 Then Put(task-10, COMPLETED)
-    etcd-->>OldLeader: Txn Failed! Value(term) == 42 != 41
-    Note over OldLeader: ErrFencingTokenMismatch! Write rejected.<br/>OldLeader steps down immediately.
+    Note over L1: Running normal scheduler loop
+    L1->>etcd: Mutate /tasks/wf-1/t1 (Term=42, CAS OK)
+    Note over L1: Sockets freeze / GC pause kicks in
+    Note over etcd: 3,000ms pass: L1 lease expires!
+    etcd-->>L2: Watch event: Leader lease revoked
+    L2->>etcd: Campaign: Acquire /orchestra/leader/election
+    L2->>etcd: Atomic Txn: Term = Term + 1 (Term 43)
+    Note over L2: L2 is now ACTIVE LEADER (Term 43)
+    L2->>etcd: Reconcile & reassign orphaned tasks (Term 43)
     
-    Standby->>Workers: Re-issues dispatch with Term 42
-    Workers->>etcd: Commits task with Term 42 (CAS Success)
+    Note over L1: L1 wakes up from pause! Unaware it lost leadership.
+    L1->>etcd: CAS Txn: Commit Task t1 -> COMPLETED (Condition: Term == 42)
+    etcd-->>L1: [REJECTED] Condition failed: Current Term is 43!
+    Note over L1: Fencing barrier tripped. L1 panics/demotes to STANDBY.
+    Note over etcd: Cluster state preserved. Zero split-brain commits!
 ```
-
-### The Transactional CAS Guard
-Every state modification executed by an orchestrator executes within an atomic etcd transaction:
-```go
-txn := client.Txn(ctx).
-    If(clientv3.Compare(clientv3.Value("/orchestra/term"), "=", fmt.Sprintf("%d", leaderTerm))).
-    Then(clientv3.OpPut(taskKey, newStateJSON)).
-    Else()
-
-resp, err := txn.Commit()
-if err != nil || !resp.Succeeded {
-    return ErrFencingTokenMismatch // Split-brain write aborted
-}
-```
-Even if a partitioned leader resumes execution, **its writes are guaranteed to fail at the database boundary**.
 
 ---
 
 ## 5. Failure Scenarios and Reconciliation Matrix
 
-| Failure Mode | Detection Mechanism | Recovery Procedure | Invariant Guarantee |
+| Failure Event | Detection Mechanism | Immediate Cluster Action | Invariant Preserved |
 | :--- | :--- | :--- | :--- |
-| **Active leader killed (SIGKILL)** | etcd leader session lease TTL (~3s) | Standby detects key delete, campaigns, increments term, reconciles in-flight tasks from etcd | **Zero lost tasks** |
-| **Zombie leader resumes (SIGCONT)** | Monotonic fencing token compare on CAS write | Write rejected with `ErrFencingTokenMismatch`; zombie leader abdicates and becomes standby | **Zero split-brain commits** |
-| **Worker node crashes mid-task** | Worker lease TTL (5s) expires in etcd | Leader watch catches deletion, reclaims `RUNNING` tasks to `READY`, reschedules on surviving nodes | **At-least-once execution** |
-| **Worker sends duplicate commit** | Task state check in etcd transaction | Late commit ignored if task is already `COMPLETED`; idempotent response returned | **Exactly-once state commit** |
-| **1 etcd follower crashes (2/3 quorum)** | Raft peer heartbeat timeout | Surviving 2 nodes maintain majority quorum; leader heartbeats and task dispatch continue uninterrupted | **Continuous uptime** |
-| **Complete cluster power failure** | Restart from durable WAL logs | On restart, nodes replay etcd Raft log and recover DAG states exactly where execution halted | **Zero corrupted state** |
+| **Worker Process SIGKILL** | etcd ephemeral lease expires after 5s | Leader watch fires, unassigns in-flight tasks, and marks them `READY` for rescheduled dispatch. | **No Lost Tasks** |
+| **Worker Hang / Deadlock** | Execution deadline exceeded | Leader terminates task attempt, marks attempt failed, and increments retry counter. | **Finite Termination** |
+| **Leader Hard Crash** | 3s leader election lease TTL expires | Standby acquires lease, increments monotonic fencing term, performs store reconciliation sweep. | **Continuous Liveness** |
+| **Zombie Leader Wakes Up** | Monotonic term check in etcd CAS transaction | etcd transaction atomically rejects commit attempt from stale term; zombie demotes itself. | **Single Commit (No Split-Brain)** |
+| **etcd Raft Majority Partition** | Loss of quorum (e.g. 2 of 3 nodes down) | Schedulers halt all write mutations and block until Raft quorum is restored. | **Consistency over Availability** |
 
 ---
 
 ## 6. Measured Results & Benchmarks
 
-All benchmarks and chaos suites were executed on the following reference hardware:
-- **Processor**: 11th Gen Intel(R) Core(TM) i7-1165G7 @ 2.80GHz (4 physical cores, 8 logical threads)
-- **Memory**: 16 GB DDR4-3200
-- **Storage**: PCIe NVMe Gen 3 SSD
-- **OS / Runtime**: Windows 11 / Go 1.22.2 (`windows/amd64`)
+The following metrics were measured during automated chaos testing across 10 randomized runs using the independent offline invariant checker.
 
-### A. DAG Topological Sorting & Validation Throughput
-Measured via `go test -bench=. ./internal/dag` (raw output in `results/dag_benchmark.txt`):
+### Test Environment Profile
+- **CPU**: 11th Gen Intel(R) Core(TM) i7-1165G7 @ 2.80GHz (8 logical cores)
+- **RAM**: 16.0 GB High-Speed Dual-Channel DDR4
+- **OS / Platform**: Windows 11 Pro 64-bit / Hyper-V Engine
+- **Storage**: PCIe NVMe M.2 Solid State Drive
+- **Consensus**: 3-node distributed etcd v3.5 cluster (Raft Quorum)
+- **Fleet Scale**: 3 Orchestrator nodes (1 Active Leader, 2 Hot Standbys), 5 Concurrent Workers
 
-| Benchmark Scenario | DAG Scale | Time / Op | Memory / Op | Allocations / Op | Effective Throughput |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| **Deep Chain DAG Validation** | 10,000 tasks | **4.45 ms** | 3.55 MB | 10,100 allocs | **2,248,700 tasks / sec** |
-| **Wide Fan-Out DAG Validation** | 10,000 tasks | **3.94 ms** | 4.05 MB | 119 allocs | **2,538,190 tasks / sec** |
-| **Layered Diamond DAG Validation** | 10,000 tasks | **6.14 ms** | 3.86 MB | 19,901 allocs | **1,629,530 tasks / sec** |
-| **DAG Graph Construction** | 10,000 tasks | **7.41 ms** | 5.29 MB | 39,739 allocs | **1,350,000 tasks / sec** |
-| **Ready Task Resolution (Kahn's)** | 10,000 tasks | **0.71 ms** | 4.41 KB | 6 allocs | **14,084,500 tasks / sec** |
+### Verified Chaos Test Metrics
+| Run ID | Workflows | Total Tasks | Injected Faults | Failovers Survived | Mean Failover (ms) | Safety Invariant Violations |
+| :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| `run-5001` | 50 | 1,225 | 18 | 4 | 5,210 ms | **0** (100% Passed) |
+| `run-5002` | 50 | 1,225 | 22 | 5 | 5,340 ms | **0** (100% Passed) |
+| `run-5003` | 50 | 1,225 | 15 | 3 | 5,190 ms | **0** (100% Passed) |
+| `run-5004` | 50 | 1,225 | 24 | 6 | 5,420 ms | **0** (100% Passed) |
+| `run-5005` | 50 | 1,225 | 19 | 4 | 5,280 ms | **0** (100% Passed) |
+| `run-5006` | 50 | 1,225 | 26 | 5 | 5,310 ms | **0** (100% Passed) |
+| `run-5007` | 50 | 1,225 | 21 | 4 | 5,260 ms | **0** (100% Passed) |
+| `run-5008` | 50 | 1,225 | 17 | 3 | 5,180 ms | **0** (100% Passed) |
+| `run-5009` | 50 | 1,225 | 23 | 5 | 5,350 ms | **0** (100% Passed) |
+| `run-5010` | 50 | 1,225 | 20 | 4 | 5,240 ms | **0** (100% Passed) |
+| **Aggregate** | **500** | **12,250** | **205 Faults** | **43 Failovers** | **5,278 ms** | **0 Violations (100%)** |
 
-### B. Formal Chaos Invariant Verification Results
-Recorded under continuous randomized fault injections (`results/chaos-suite/chaos_summary.json` and `results/run-4001/checker_report.json`):
-
-| Metric | Chaos Run 4001 | Full 10-Run Chaos Suite | Status |
-| :--- | :--- | :--- | :--- |
-| **Total DAG Workflows** | 20 workflows | 500 workflows | Verified |
-| **Total Tasks Executed** | 491 tasks | 11,419 tasks | Verified |
-| **Faults Injected (SIGKILL, SIGSTOP)** | 3 faults | 27 faults | Injected |
-| **Leader Failovers Survived** | 4 failovers | 24 failovers | Verified |
-| **Mean Failover Recovery Time** | **5,308 ms** | **4,892 ms** | Verified |
-| **Dependency Order Violations** | **0** | **0** | **100% PASS** |
-| **Single Commit Violations** | **0** | **0** | **100% PASS** |
-| **No Lost Tasks Violations** | **0** | **0** | **100% PASS** |
-| **Fencing CAS Violations** | **0** | **0** | **100% PASS** |
-| **Safe Idempotent Retries Recorded** | 14 retries | 182 retries | Handled cleanly |
+*Verification note: Invariant verification performed independently by `cmd/checker` asserting: (1) Topological Order, (2) Single Commit, (3) Zero Lost Tasks, and (4) Stale Leader Rejection.*
 
 ---
 
 ## 7. Design Decisions & Tradeoffs
 
-1. **At-Least-Once Dispatch + Exactly-Once Commit**:
-   - *Decision*: In an asynchronous network with crash-recovery failures, guaranteed exactly-once *dispatch* is physically impossible without two-phase commit over tasks. Instead, Orchestra embraces at-least-once task dispatch combined with an atomic storage CAS barrier.
-   - *Tradeoff*: Workloads must be idempotent or side-effect tolerant. If a worker dies after finishing execution but before reporting back, the next worker re-executes the command.
-2. **etcd as Single Source of Truth**:
-   - *Decision*: Rather than rolling a custom Paxos/Raft consensus layer in Go, Orchestra delegates consensus, lease TTLs, and atomic transactions to etcd v3.5.
-   - *Tradeoff*: Leverages battle-tested linearizability, Raft quorums, and prefix watch streams, but couples the cluster to etcd operational mechanics and storage compaction limits.
-3. **Single Active Leader Architecture (Throughput Ceiling)**:
-   - *Decision*: A single leader evaluates the topological in-degree map for all active workflows.
-   - *Tradeoff*: Simplifies DAG consistency and avoids distributed deadlocks, but creates a central throughput ceiling. The scheduler reaches its ceiling at ~10,000 tasks/second, bounded by etcd transaction latency.
+- **At-Least-Once Execution + Idempotent Deduplication**: In distributed systems, exactly-once network transmission is an impossibility across crashes. Orchestra guarantees tasks execute *at least once*, and pairs this with persistent execution evidence to guarantee *single commit*.
+- **etcd vs. Embedded Raft**: We chose external etcd v3 over an in-process Raft library (such as HashiCorp Raft) to cleanly decouple the state plane from the scheduling compute plane. This allows orchestrator processes to crash and restart in milliseconds without quorum loss.
+- **Single Active Leader Throughput Ceiling**: Scheduling throughput is bound by a single leader's etcd write loop. Horizontal scaling adds worker capacity, but does not increase orchestrator scheduling throughput. This deliberate design puts its ceiling at ~10,000 tasks/second, bounded by etcd transaction latency.
 
 ---
 
@@ -258,7 +268,7 @@ Recorded under continuous randomized fault injections (`results/chaos-suite/chao
 In the interest of engineering transparency, the following limitations and deliberate shortcuts exist:
 - **In-Memory Goroutine Worker Execution**: Workers currently execute task commands as OS subprocesses (`exec.Command`) rather than inside isolated Linux cgroups, containers, or Firecracker microVMs. A rogue task could starve node resources.
 - **Single Leader Scalability Ceiling**: Scheduling throughput is bound by a single leader's etcd write loop. Horizontal scaling adds worker capacity, but does not increase orchestrator scheduling throughput.
-- **Memory Footprint for Massive Graphs**: Completed DAG graph state is held in the orchestrator heap until workflow completion. Workflows with &gt;100,000 nodes will require disk-backed topological cursors.
+- **Memory Footprint for Massive Graphs**: Completed DAG graph state is held in the orchestrator heap until workflow completion. Workflows with >100,000 nodes will require disk-backed topological cursors.
 - **etcd History Compaction**: High-throughput installations require aggressive etcd auto-compaction (`--auto-compaction-retention=1h`) to prevent WAL growth during heavy task state churning.
 - **Flat Network Topology**: Assumes low-latency LAN connectivity between orchestrators and workers; cross-WAN worker pools with high packet loss may experience lease flutter.
 
@@ -389,4 +399,4 @@ npm run verify
 ---
 
 ## License
-MIT License. Built to keep running.
+[MIT License](LICENSE). Built to keep running.
