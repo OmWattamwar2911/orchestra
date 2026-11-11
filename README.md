@@ -10,6 +10,40 @@ Orchestra is a fault-tolerant, high-performance distributed workflow scheduler i
 
 ---
 
+## Develop the UI (Poster Modernist Redesign)
+
+Orchestra features a Swiss **Poster Modernist** web application (Cream `#E3E2DE` paper background, Cobalt `#1351AA` accent, Jet `#141414` text, General Sans typography, and universal `0px` border-radius).
+
+### 1. Local Vite Development Server (Recommended)
+To run the live development server with Hot Module Replacement (HMR):
+```bash
+cd web
+npm install
+npm run dev
+```
+The Vite development server always mounts the latest local source at **[http://localhost:3000](http://localhost:3000)** (or `http://127.0.0.1:3000`).
+
+### 2. Standalone Demo Mode (Zero Backend Required)
+You can run and explore the entire UI without Docker or Go running:
+- Open: **[http://localhost:3000/?demo=true](http://localhost:3000/?demo=true)**
+- Or set environment variable: `VITE_DEMO=true` in `web/.env.local`.
+The built-in deterministic simulator replicates 3 orchestrators, 5 workers, DAG task scheduling, live worker deaths, and leader failovers with zero lost tasks.
+
+### 3. Rebuilding the Docker Container (Production Image)
+If running inside Docker Compose, always rebuild with `--no-cache` to ensure the newest compiled UI bundle is copied into Nginx:
+```bash
+docker compose build --no-cache web && docker compose up -d --force-recreate web
+```
+
+### 4. Running UI Verification Tests
+To assert that page background is `#E3E2DE`, primary button is `#1351AA`, General Sans font is loaded, and all elements adhere to `0px` border-radius:
+```bash
+cd web
+npm run verify
+```
+
+---
+
 ## Run it
 
 ### Prerequisites
