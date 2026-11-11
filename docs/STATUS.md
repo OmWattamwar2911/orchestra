@@ -2,7 +2,7 @@
 
 This living status document tracks the verification state, test evidence, and known limitations for every requirement in Orchestra.
 
-Last Updated: Phase 1 Code Hygiene & Static Checks Complete (2026-11-11)
+Last Updated: Phase 2 Test Stabilization & Coverage Complete (2026-11-11)
 
 ---
 
@@ -30,7 +30,7 @@ Last Updated: Phase 1 Code Hygiene & Static Checks Complete (2026-11-11)
 | **Worker Lease & Bounded Pool** | **DONE** | `internal/worker/worker.go`<br>`internal/worker/worker_test.go` | 5s ephemeral etcd lease keepalive, semaphore-bounded execution slots. |
 | **Worker Evidence Log** | **DONE** | `internal/evidence/evidence.go` | Independent local JSON lines evidence file per worker node. |
 | **Real Task Types (HTTP Task with SSRF Guard)** | **MISSING** | `internal/worker/worker.go` | Needs production `http` task executor (URL, method, headers, timeout, response size limits) with SSRF blocking of private/loopback IPs. |
-| **Scheduler Backpressure & Dispatch** | **PARTIAL** | `internal/scheduler/engine.go` | Least-loaded dispatch implemented; `TestScheduler_BackpressureAndQueueDepth` exhibited timing race in baseline test under race detector. |
+| **Scheduler Backpressure & Dispatch** | **DONE** | `internal/scheduler/engine.go`<br>`internal/scheduler/engine_test.go` | Added `hasAvailableCapacity()` to avoid popping queued items when busy; added deterministic worker tie-breaking; verified 30x pass under `-race` (`results/repeat30_scheduler.txt`). |
 
 ---
 

@@ -277,8 +277,15 @@ func TestWorker_KillMidTaskRequeuesToSurvivor(t *testing.T) {
 		t.Fatal("timed out waiting for task to be re-queued and completed on worker 2")
 	}
 
-	// 7. Verify workflow reached terminal state SUCCEEDED
-	wf, _, err := s.GetWorkflow(ctx, "wf-midtask-kill")
+	// 7. Verify workflow reached terminal state SUCCEEDED in store
+	var wf *pb.Workflow
+	for i := 0; i < 50; i++ {
+		wf, _, err = s.GetWorkflow(ctx, "wf-midtask-kill")
+		if err == nil && wf.GetStatus().GetState() == pb.WorkflowState_WORKFLOW_STATE_SUCCEEDED {
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
 	if err != nil {
 		t.Fatalf("GetWorkflow failed: %v", err)
 	}

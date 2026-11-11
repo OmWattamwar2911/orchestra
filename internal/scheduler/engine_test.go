@@ -647,13 +647,19 @@ func TestScheduler_BackpressureAndQueueDepth(t *testing.T) {
 		t.Fatal("timeout waiting for first task")
 	}
 
-	time.Sleep(100 * time.Millisecond)
+	requireQueueDepth := func(expected int) {
+		deadline := time.Now().Add(3 * time.Second)
+		for time.Now().Before(deadline) {
+			if engine.QueueDepth() == expected {
+				return
+			}
+			time.Sleep(10 * time.Millisecond)
+		}
+		t.Fatalf("expected queue depth %d, got %d", expected, engine.QueueDepth())
+	}
 
 	// Backpressure: Since worker has capacity 1, the remaining 3 tasks must be waiting in the queue
-	depth := engine.QueueDepth()
-	if depth != 3 {
-		t.Fatalf("expected queue depth 3 under backpressure, got %d", depth)
-	}
+	requireQueueDepth(3)
 
 	// Worker completes first task -> capacity is freed -> next task is dequeued
 	_, _ = engine.ReportResult(ctx, &pb.ReportResultRequest{
@@ -671,11 +677,7 @@ func TestScheduler_BackpressureAndQueueDepth(t *testing.T) {
 		t.Fatal("timeout waiting for second task after capacity freed")
 	}
 
-	time.Sleep(100 * time.Millisecond)
-	depthAfter := engine.QueueDepth()
-	if depthAfter != 2 {
-		t.Fatalf("expected queue depth 2 after 1 task dispatched, got %d", depthAfter)
-	}
+	requireQueueDepth(2)
 }
 
 // Test 6: Workflow Cancellation cancels pending and signals running tasks

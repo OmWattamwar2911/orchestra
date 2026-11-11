@@ -336,6 +336,18 @@ func (e *Engine) notifyCapacity() {
 	}
 }
 
+// hasAvailableCapacity checks whether any live connected worker has capacity to accept a task.
+func (e *Engine) hasAvailableCapacity() bool {
+	e.workersMu.Lock()
+	defer e.workersMu.Unlock()
+	for _, w := range e.workers {
+		if w.streamActive && w.activeTasks < w.capacity {
+			return true
+		}
+	}
+	return false
+}
+
 // computeBackoff calculates exponential backoff with jitter up to maxRetries.
 func (e *Engine) computeBackoff(attempt int32) time.Duration {
 	base := e.baseBackoff
@@ -431,6 +443,16 @@ func (e *Engine) runDispatcherLoop(ctx context.Context) {
 			return
 		}
 
+		if !e.hasAvailableCapacity() {
+			select {
+			case <-ctx.Done():
+				return
+			case <-e.capacitySignal:
+			case <-time.After(50 * time.Millisecond):
+			}
+			continue
+		}
+
 		assignment := e.queue.Dequeue()
 		if assignment == nil {
 			// Queue is empty, wait for items or timeout
@@ -461,7 +483,7 @@ func (e *Engine) runDispatcherLoop(ctx context.Context) {
 
 		for id, w := range e.workers {
 			if w.streamActive && w.activeTasks < w.capacity {
-				if w.activeTasks < minLoad {
+				if w.activeTasks < minLoad || (w.activeTasks == minLoad && (bestWorkerID == "" || id < bestWorkerID)) {
 					minLoad = w.activeTasks
 					bestWorkerID = id
 				}
