@@ -1,0 +1,42 @@
+# Auto detect text files and perform LF normalization on checkout
+* text=auto
+
+# Shell scripts must strictly retain LF line endings across all platforms
+*.sh text eol=lf
+
+# Windows scripts
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Source code and config files
+*.go text
+*.ts text
+*.tsx text
+*.js text
+*.mjs text
+*.json text
+*.yaml text
+*.yml text
+*.md text
+*.proto text
+*.css text
+*.html text
+*.svg text
+
+# Binary file types
+*.png binary
+*.gif binary
+*.jpg binary
+*.jpeg binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.eot binary
+*.mp4 binary
+*.exe binary
+*.test binary
+*.out binary
+*.zip binary
+*.tar.gz binary
