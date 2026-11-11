@@ -33,26 +33,49 @@ func TestHTTPGateway_HealthAndMetrics(t *testing.T) {
 		t.Errorf("unexpected /healthz data: %v", healthzData)
 	}
 
-	// 2. Test /readyz (no etcd store -> ready by default)
+	// 2. Test /readyz (no etcd store -> not ready 503)
 	respReady, err := http.Get(ts.URL + "/readyz")
 	if err != nil {
 		t.Fatalf("GET /readyz failed: %v", err)
 	}
 	defer respReady.Body.Close()
 
-	if respReady.StatusCode != http.StatusOK {
-		t.Fatalf("expected HTTP 200 from /readyz, got %d", respReady.StatusCode)
+	if respReady.StatusCode != http.StatusServiceUnavailable {
+		t.Fatalf("expected HTTP 503 from /readyz without etcd, got %d", respReady.StatusCode)
 	}
 
 	var readyzData map[string]any
 	if err := json.NewDecoder(respReady.Body).Decode(&readyzData); err != nil {
 		t.Fatalf("failed to decode /readyz JSON: %v", err)
 	}
-	if readyzData["status"] != "ready" {
+	if readyzData["status"] != "not ready" {
 		t.Errorf("unexpected /readyz status: %v", readyzData["status"])
 	}
 
-	// 3. Test /metrics
+	// 3. Test Chaos endpoint disabled in production mode (403 Forbidden)
+	respChaos, err := http.Post(ts.URL+"/api/chaos/stepdown", "application/json", nil)
+	if err != nil {
+		t.Fatalf("POST /api/chaos/stepdown failed: %v", err)
+	}
+	defer respChaos.Body.Close()
+	if respChaos.StatusCode != http.StatusForbidden {
+		t.Fatalf("expected HTTP 403 for chaos endpoint without dev mode, got %d", respChaos.StatusCode)
+	}
+
+	// 4. Test Chaos endpoint with X-Orchestra-Dev-Mode header
+	devReq, _ := http.NewRequest("POST", ts.URL+"/api/chaos/stepdown", nil)
+	devReq.Header.Set("X-Orchestra-Dev-Mode", "true")
+	respDevChaos, err := http.DefaultClient.Do(devReq)
+	if err != nil {
+		t.Fatalf("POST /api/chaos/stepdown with dev mode failed: %v", err)
+	}
+	defer respDevChaos.Body.Close()
+	// Should NOT be 403 Forbidden (may be 400 since node is not leader, but past the security check)
+	if respDevChaos.StatusCode == http.StatusForbidden {
+		t.Fatalf("expected chaos endpoint to be allowed with dev mode header, got 403")
+	}
+
+	// 5. Test /metrics
 	respMetrics, err := http.Get(ts.URL + "/metrics")
 	if err != nil {
 		t.Fatalf("GET /metrics failed: %v", err)

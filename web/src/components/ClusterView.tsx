@@ -178,12 +178,22 @@ export const ClusterView: React.FC<ClusterViewProps> = ({
                 const running = w.current_tasks ?? w.running_tasks ?? 0;
                 const cap = w.capacity || 4;
                 const pct = Math.round((running / cap) * 100);
-                const sId = sanitizeWorkerId(w.worker_id || `worker-${idx + 1}`);
+                const rawId = w.worker_id || `worker-${idx + 1}`;
+                const friendlyName = `worker-${idx + 1}`;
+                const sId = sanitizeWorkerId(rawId);
+                const isDifferent = rawId !== friendlyName && sId !== friendlyName;
 
                 return (
                   <tr key={w.worker_id || idx} className="hover:bg-[rgba(255,255,255,0.2)] transition-colors duration-300">
-                    <td className="py-3 px-4 font-bold text-jet">
-                      {sId}
+                    <td className="py-3 px-4 font-bold text-jet" title={`Full Worker ID: ${rawId}`}>
+                      <div className="flex items-center gap-2">
+                        <span>{sId}</span>
+                        {isDifferent && (
+                          <span className="font-mono text-[10px] text-muted-strong font-normal truncate max-w-[140px]" title={rawId}>
+                            [{rawId.slice(0, 8)}...]
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="py-3 px-4">
                       <StatusBadge state={w.active ? 'RUNNING' : 'FAILED'} label={w.active ? 'ACTIVE' : 'DEAD'} />

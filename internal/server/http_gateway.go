@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"os"
 	"os/exec"
 	"strconv"
 	"strings"
@@ -138,20 +139,27 @@ func (g *HTTPGateway) handleHealthz(w http.ResponseWriter, r *http.Request) {
 
 func (g *HTTPGateway) handleReadyz(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	if g.store != nil && g.store.Client() != nil {
-		ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
-		defer cancel()
-		endpoints := g.store.Client().Endpoints()
-		if len(endpoints) > 0 {
-			_, err := g.store.Client().Status(ctx, endpoints[0])
-			if err != nil {
-				w.WriteHeader(http.StatusServiceUnavailable)
-				_ = json.NewEncoder(w).Encode(map[string]any{
-					"status": "not ready",
-					"error":  fmt.Sprintf("etcd endpoint unavailable: %v", err),
-				})
-				return
-			}
+	if g.store == nil || g.store.Client() == nil {
+		w.WriteHeader(http.StatusServiceUnavailable)
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"status": "not ready",
+			"error":  "etcd client not configured",
+		})
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
+	defer cancel()
+	endpoints := g.store.Client().Endpoints()
+	if len(endpoints) > 0 {
+		_, err := g.store.Client().Status(ctx, endpoints[0])
+		if err != nil {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"status": "not ready",
+				"error":  fmt.Sprintf("etcd endpoint unavailable: %v", err),
+			})
+			return
 		}
 	}
 
@@ -222,19 +230,27 @@ func (g *HTTPGateway) handleClusterStatus(w http.ResponseWriter, r *http.Request
 	leaderInfo, term, _ := g.discoverLeader(ctx)
 	var fencingToken int64
 	var leaderKey string
+	var electionCount int64
 	if g.candidate != nil {
 		fencingToken = g.candidate.Term()
 		leaderKey = g.candidate.LeaderKey()
+		electionCount = g.candidate.ElectionCount()
 	}
 	if term > fencingToken {
 		fencingToken = term
 	}
 
+	// Browser-compatible proxy address using incoming host
+	reqHost := r.Host
+	if reqHost == "" {
+		reqHost = fmt.Sprintf("localhost:%d", g.port)
+	}
+
 	// Known orchestrator nodes in cluster
 	knownNodes := []map[string]any{
-		{"node_id": "orchestrator-1", "addr": "orchestrator1:50051", "http_addr": "http://orchestrator1:8080"},
-		{"node_id": "orchestrator-2", "addr": "orchestrator2:50051", "http_addr": "http://orchestrator2:8080"},
-		{"node_id": "orchestrator-3", "addr": "orchestrator3:50051", "http_addr": "http://orchestrator3:8080"},
+		{"node_id": "orchestrator-1", "addr": "orchestrator1:50051", "http_addr": fmt.Sprintf("http://%s", reqHost)},
+		{"node_id": "orchestrator-2", "addr": "orchestrator2:50051", "http_addr": fmt.Sprintf("http://%s", reqHost)},
+		{"node_id": "orchestrator-3", "addr": "orchestrator3:50051", "http_addr": fmt.Sprintf("http://%s", reqHost)},
 	}
 	for _, n := range knownNodes {
 		id := n["node_id"].(string)
@@ -280,6 +296,7 @@ func (g *HTTPGateway) handleClusterStatus(w http.ResponseWriter, r *http.Request
 		"leader_key":      leaderKey,
 		"leader":          leaderInfo,
 		"term":            fencingToken,
+		"election_count":  electionCount,
 		"nodes":           knownNodes,
 		"worker_count":    len(workersList),
 		"workers":         workersList,
@@ -588,7 +605,27 @@ func (g *HTTPGateway) handleCancelWorkflow(w http.ResponseWriter, r *http.Reques
 	_ = json.NewEncoder(w).Encode(resp)
 }
 
+func (g *HTTPGateway) checkDevMode(w http.ResponseWriter, r *http.Request) bool {
+	devMode := os.Getenv("ORCHESTRA_DEV_MODE") == "true" ||
+		os.Getenv("ORCHESTRA_DEV_MODE") == "1" ||
+		r.Header.Get("X-Orchestra-Dev-Mode") == "true" ||
+		r.URL.Query().Get("dev_mode") == "true"
+	if !devMode {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusForbidden)
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"error": "chaos endpoints are disabled in production mode (requires ORCHESTRA_DEV_MODE=true)",
+		})
+		return false
+	}
+	return true
+}
+
 func (g *HTTPGateway) handleStepdown(w http.ResponseWriter, r *http.Request) {
+	if !g.checkDevMode(w, r) {
+		return
+	}
+
 	if g.candidate == nil || !g.candidate.IsLeader() {
 		http.Error(w, "node is not leader", http.StatusBadRequest)
 		return
@@ -606,6 +643,10 @@ func (g *HTTPGateway) handleStepdown(w http.ResponseWriter, r *http.Request) {
 
 // handleChaosKillWorker terminates a worker container or revokes its lease in etcd.
 func (g *HTTPGateway) handleChaosKillWorker(w http.ResponseWriter, r *http.Request) {
+	if !g.checkDevMode(w, r) {
+		return
+	}
+
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()
 
@@ -664,6 +705,10 @@ func (g *HTTPGateway) handleChaosKillWorker(w http.ResponseWriter, r *http.Reque
 
 // handleChaosKillLeader kills the active leader orchestrator container or steps down leadership.
 func (g *HTTPGateway) handleChaosKillLeader(w http.ResponseWriter, r *http.Request) {
+	if !g.checkDevMode(w, r) {
+		return
+	}
+
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()
 

@@ -56,7 +56,7 @@ export const fallbackWorkflows: WorkflowWithTasks[] = [
     },
     tasks: [
       {
-        spec: { id: 'fetch', type: 'mock', payload: 'fetch raw dataset', timeout_seconds: 20, max_retries: 2, dependencies: [] },
+        spec: { id: 'fetch', type: 'echo', payload: 'fetch raw dataset', timeout_seconds: 20, max_retries: 2, dependencies: [] },
         status: { id: 'fetch', workflow_id: 'diamond-pipeline-sample', state: 5, current_attempt: 1, assigned_worker: 'worker-1', started_at: Date.now() - 20000, completed_at: Date.now() - 15000, error_message: '' },
       },
       {
@@ -68,11 +68,11 @@ export const fallbackWorkflows: WorkflowWithTasks[] = [
         status: { id: 'transformB', workflow_id: 'diamond-pipeline-sample', state: 4, current_attempt: 1, assigned_worker: 'worker-2', started_at: Date.now() - 8000, completed_at: 0, error_message: '' },
       },
       {
-        spec: { id: 'merge', type: 'mock', payload: 'merge transformed chunks', timeout_seconds: 20, max_retries: 2, dependencies: ['transformA', 'transformB'] },
+        spec: { id: 'merge', type: 'echo', payload: 'merge transformed chunks', timeout_seconds: 20, max_retries: 2, dependencies: ['transformA', 'transformB'] },
         status: { id: 'merge', workflow_id: 'diamond-pipeline-sample', state: 1, current_attempt: 0, assigned_worker: '', started_at: 0, completed_at: 0, error_message: '' },
       },
       {
-        spec: { id: 'publish', type: 'mock', payload: 'publish aggregated result', timeout_seconds: 20, max_retries: 2, dependencies: ['merge'] },
+        spec: { id: 'publish', type: 'echo', payload: 'publish aggregated result', timeout_seconds: 20, max_retries: 2, dependencies: ['merge'] },
         status: { id: 'publish', workflow_id: 'diamond-pipeline-sample', state: 1, current_attempt: 0, assigned_worker: '', started_at: 0, completed_at: 0, error_message: '' },
       },
     ],

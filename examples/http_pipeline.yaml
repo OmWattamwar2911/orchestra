@@ -1,0 +1,33 @@
+id: http-ingestion-pipeline
+name: HTTP Ingestion Pipeline (healthcheck -> fetch-data -> process -> notify-webhook)
+failure_policy: FAIL_FAST
+tasks:
+  - id: healthcheck
+    type: http
+    payload: '{"url":"https://httpbin.org/status/200","method":"GET","expected_status":200}'
+    timeout_seconds: 15
+    max_retries: 3
+
+  - id: fetch-data
+    type: http
+    payload: '{"url":"https://httpbin.org/get?source=orchestra","method":"GET","expected_status":200,"headers":{"Accept":"application/json"}}'
+    timeout_seconds: 20
+    max_retries: 2
+    dependencies:
+      - healthcheck
+
+  - id: process
+    type: cpu
+    payload: "50000"
+    timeout_seconds: 10
+    max_retries: 1
+    dependencies:
+      - fetch-data
+
+  - id: notify-webhook
+    type: http
+    payload: '{"url":"https://httpbin.org/post","method":"POST","headers":{"Content-Type":"application/json"},"body":"{\"pipeline\":\"http-ingestion\",\"status\":\"completed\"}","expected_status":200}'
+    timeout_seconds: 15
+    max_retries: 2
+    dependencies:
+      - process

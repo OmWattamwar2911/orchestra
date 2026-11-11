@@ -2,7 +2,7 @@
 
 This living status document tracks the verification state, test evidence, and known limitations for every requirement in Orchestra.
 
-Last Updated: Phase 2 Test Stabilization & Coverage Complete (2026-11-11)
+Last Updated: Phase 3 Features & Security Complete (2026-11-11)
 
 ---
 
@@ -14,7 +14,7 @@ Last Updated: Phase 2 Test Stabilization & Coverage Complete (2026-11-11)
 | **Topological Scheduling & Parallel Branches** | **DONE** | `internal/dag/dag.go`<br>`internal/scheduler/engine.go` | Concurrent branch traversal with topological ordering. |
 | **Failure Policies: FAIL_FAST & CONTINUE** | **DONE** | `internal/scheduler/engine.go`<br>`internal/scheduler/engine_test.go` (`TestScheduler_FailurePolicies`) | `FAIL_FAST` cancels in-flight/pending tasks; `CONTINUE` marks downstream `SKIPPED` while independent branches continue. |
 | **Workflow Cancellation** | **DONE** | `internal/scheduler/engine.go` (`CancelWorkflow`)<br>`internal/scheduler/engine_test.go` (`TestScheduler_CancelWorkflow`) | Recursively cancels pending tasks and dispatches cancellation signals. |
-| **Input Limits & Bounds Validation** | **PARTIAL** | `internal/dag/dag.go` | Needs maximum workflow size checks (task count limit, payload bytes), ID format regex, and retry bounds. |
+| **Input Limits & Bounds Validation** | **DONE** | `internal/dag/dag.go`<br>`internal/dag/types.go`<br>`internal/dag/dag_test.go` (`TestValidate_InputLimits`) | Validates max tasks (10,000), payload size limit (10MB), regex identifier `^[a-zA-Z0-9_-]{1,128}$`, timeout bounds (0..604800s), and max retries (0..50). |
 | **Task State Machine (9 States)** | **DONE** | `internal/store/state_machine.go`<br>`internal/store/store_test.go` (`TestStateMachine_LegalTransitions`, `TestStateMachine_IllegalTransitions`) | Strictly validates `PENDING`, `READY`, `ASSIGNED`, `RUNNING`, `COMPLETED`, `FAILED`, `SKIPPED`, `CANCELLED`, `DEAD_LETTER`. Illegal transitions rejected. |
 | **Workflow State Machine (4 States)** | **DONE** | `internal/store/state_machine.go` | Validates `RUNNING`, `SUCCEEDED`, `FAILED`, `CANCELLED`. |
 | **Retries with Exponential Backoff & Jitter** | **DONE** | `internal/scheduler/engine.go` (`ReportResult`)<br>`internal/scheduler/engine_test.go` (`TestScheduler_TaskRetriesAndExponentialBackoff`) | Jittered exponential delay before re-enqueuing task in `READY` state. |
@@ -23,13 +23,13 @@ Last Updated: Phase 2 Test Stabilization & Coverage Complete (2026-11-11)
 | **Idempotent Workflow Submission** | **DONE** | `internal/store/store.go` (`SubmitWorkflow`)<br>`internal/store/store_test.go` (`TestStore_IdempotentSubmit`) | Duplicate submissions return existing workflow without re-execution. |
 | **Single Active Leader Election** | **DONE** | `internal/election/leader.go`<br>`internal/election/election_test.go` (`TestElection_SingleLeaderAndFailover`) | Contested etcd election lease (TTL 5s) with auto-recampaign. |
 | **Zombie Leader Fencing (CAS)** | **DONE** | `internal/election/leader.go` (`FencedContext`)<br>`internal/election/election_test.go` (`TestElection_ZombieLeaderWriteRejected`) | Stale terms atomically rejected by etcd ModRevision compare barrier. |
-| **Leader Term & Election Counter** | **PARTIAL** | `internal/election/leader.go` | Uses etcd ModRevision as term; needs human-friendly election counter exposed alongside it. |
+| **Leader Term & Election Counter** | **DONE** | `internal/election/leader.go` (`ElectionCount()`)<br>`internal/server/http_gateway.go` | Exposes monotonic etcd revision term and election count counter in `/api/cluster`. |
 | **Persistence & Single Commit** | **DONE** | `internal/store/store.go` (`CommitTaskResult`)<br>`internal/store/store_test.go` (`TestStore_CommitTaskResult_DuplicateRejected`) | Only 1 commit allowed per attempt; duplicate/stale commits rejected and metric incremented. |
 | **Append-Only Event Stream** | **DONE** | `internal/store/events.go` | Globally ordered audit trail under `/orchestra/events/{ts}` with leader term. |
 | **Leader Crash Recovery** | **DONE** | `internal/store/store.go` (`RecoverState`)<br>`internal/store/store_test.go` (`TestStore_LeaderRecovery_RequeuesDeadWorkerTasks`) | Scans active DAGs, compares with live worker leases, re-queues orphaned tasks. |
 | **Worker Lease & Bounded Pool** | **DONE** | `internal/worker/worker.go`<br>`internal/worker/worker_test.go` | 5s ephemeral etcd lease keepalive, semaphore-bounded execution slots. |
 | **Worker Evidence Log** | **DONE** | `internal/evidence/evidence.go` | Independent local JSON lines evidence file per worker node. |
-| **Real Task Types (HTTP Task with SSRF Guard)** | **MISSING** | `internal/worker/worker.go` | Needs production `http` task executor (URL, method, headers, timeout, response size limits) with SSRF blocking of private/loopback IPs. |
+| **Real Task Types (HTTP Task with SSRF Guard)** | **DONE** | `internal/worker/http_task.go`<br>`internal/worker/http_task_test.go`<br>`examples/http_pipeline.yaml` | Production `http` task executor supporting method, headers, payload, expected status, response limits, and SSRF blocking of private/loopback/link-local IPs. |
 | **Scheduler Backpressure & Dispatch** | **DONE** | `internal/scheduler/engine.go`<br>`internal/scheduler/engine_test.go` | Added `hasAvailableCapacity()` to avoid popping queued items when busy; added deterministic worker tie-breaking; verified 30x pass under `-race` (`results/repeat30_scheduler.txt`). |
 
 ---
@@ -39,9 +39,9 @@ Last Updated: Phase 2 Test Stabilization & Coverage Complete (2026-11-11)
 | Requirement | Status | Evidence / Location | Known Limitations / Notes |
 | :--- | :---: | :--- | :--- |
 | **Prometheus Metrics (/metrics)** | **DONE** | `internal/metrics/metrics.go`<br>`internal/server/http_gateway.go` | Exposes task counts, durations, failovers, and duplicate rejections. |
-| **Health & Readiness (/healthz, /readyz)** | **PARTIAL** | `internal/server/http_gateway.go` | `/healthz` exists; `/readyz` needs to verify real etcd connectivity and worker registration. |
+| **Health & Readiness (/healthz, /readyz)** | **DONE** | `internal/server/http_gateway.go`<br>`internal/server/http_gateway_test.go`<br>`internal/worker/worker.go` | `/healthz` returns process status; `/readyz` queries etcd connectivity, returning 200 when ready and 503 when unready. |
 | **Structured slog Logging** | **DONE** | Throughout `cmd/` and `internal/` | Logs contain `workflow_id`, `task_id`, `attempt_id`, `worker_id`, `term`. |
-| **Security & Dev Mode Boundaries** | **PARTIAL** | `internal/server/http_gateway.go` | Dev-mode gating required for destructive chaos endpoints; CORS and graceful shutdown. |
+| **Security & Dev Mode Boundaries** | **DONE** | `internal/server/http_gateway.go`<br>`internal/server/http_gateway_test.go` | Destructive chaos endpoints return 403 Forbidden unless `ORCHESTRA_DEV_MODE=true` is set. |
 
 ---
 
@@ -63,9 +63,9 @@ Last Updated: Phase 2 Test Stabilization & Coverage Complete (2026-11-11)
 | :--- | :---: | :--- | :--- |
 | **Poster Modernist Aesthetics** | **DONE** | `web/src/` | Cream `#E3E2DE`, Jet `#141414`, Cobalt `#1351AA`, 0px radius, General Sans. Verified 100% by `npm run verify`. |
 | **Demo Simulator Mode** | **DONE** | `web/src/data/simulatorAdapter.ts` | Complete fallback simulator with 3 orchestrators, 5 workers, live workflows. |
-| **External URL Proxying (No Docker hostnames)** | **PARTIAL** | `web/src/` | Needs sanitization of `orchestrator1:8080` raw URLs to proxied browser endpoints. |
-| **Friendly Worker Naming (worker-1..N)** | **PARTIAL** | `web/src/`, `internal/worker/` | Needs friendly names with full UUID in tooltip; hide 'mock' task type. |
-| **Build Stamp in Footer** | **MISSING** | `web/src/` | Needs Git commit hash and build timestamp rendered in UI footer. |
+| **External URL Proxying (No Docker hostnames)** | **DONE** | `internal/server/http_gateway.go`<br>`web/src/` | HTTP Gateway derives `http_addr` from client `Host` header to avoid unresolvable internal hostnames. |
+| **Friendly Worker Naming (worker-1..N)** | **DONE** | `web/src/components/ClusterView.tsx` | Displays friendly worker names with tooltip for full ID; removed `mock` task types from sample data. |
+| **Build Stamp in Footer** | **DONE** | `web/src/components/layout/AppShell.tsx`<br>`web/src/pages/LandingPage.tsx` | Git short hash and ISO build timestamp injected via Vite define and displayed in UI footers. |
 
 ---
 

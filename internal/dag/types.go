@@ -3,8 +3,19 @@ package dag
 import (
 	"errors"
 	"fmt"
+	"regexp"
 	"strings"
 )
+
+// Workflow and task input limits
+const (
+	MaxTasksPerWorkflow = 10000
+	MaxPayloadSizeBytes = 10 * 1024 * 1024 // 10MB
+	MaxTimeoutSeconds   = 86400 * 7        // 7 days
+	MaxRetriesLimit     = 50
+)
+
+var idRegex = regexp.MustCompile(`^[a-zA-Z0-9_-]{1,128}$`)
 
 // FailurePolicy defines how the scheduler handles task failures within a workflow.
 type FailurePolicy int
@@ -98,6 +109,11 @@ type Workflow struct {
 // Sentinel errors for DAG validation and lookup failures.
 var (
 	ErrEmptyWorkflow        = errors.New("workflow must contain at least one task")
+	ErrTooManyTasks         = errors.New("workflow exceeds maximum task limit of 10000")
+	ErrPayloadTooLarge      = errors.New("task payload exceeds maximum limit of 10MB")
+	ErrInvalidIDFormat      = errors.New("identifier contains invalid characters (must match ^[a-zA-Z0-9_-]{1,128}$)")
+	ErrInvalidTimeout       = errors.New("task timeout is negative or exceeds maximum limit of 604800s")
+	ErrInvalidMaxRetries    = errors.New("task max retries is negative or exceeds limit of 50")
 	ErrDuplicateTaskID      = errors.New("duplicate task ID detected")
 	ErrUnknownDependency    = errors.New("task references unknown dependency ID")
 	ErrCycleDetected        = errors.New("cycle detected in workflow DAG")

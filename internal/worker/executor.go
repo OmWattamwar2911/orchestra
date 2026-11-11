@@ -174,6 +174,9 @@ func (e *Executor) runPayload(ctx context.Context, taskType, payload string) ([]
 	case "echo":
 		return []byte(payload), pb.TaskOutcome_TASK_OUTCOME_SUCCESS, ""
 
+	case "http":
+		return ExecuteHTTPTask(ctx, payload)
+
 	case "sleep":
 		dur := 100 * time.Millisecond
 		trimmed := strings.TrimSpace(payload)

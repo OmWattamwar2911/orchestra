@@ -633,3 +633,94 @@ func TestPropertyBased_1000RandomDAGs(t *testing.T) {
 		}
 	}
 }
+
+func TestValidate_InputLimits(t *testing.T) {
+	// 1. Invalid workflow ID
+	err := dag.Validate(dag.Workflow{
+		ID:    "invalid wf id!",
+		Tasks: []dag.Task{{ID: "task1"}},
+	})
+	if !errors.Is(err, dag.ErrInvalidIDFormat) {
+		t.Fatalf("expected ErrInvalidIDFormat for workflow ID, got: %v", err)
+	}
+
+	// 2. Invalid task ID
+	err = dag.Validate(dag.Workflow{
+		ID:    "wf-valid",
+		Tasks: []dag.Task{{ID: "task with spaces"}},
+	})
+	if !errors.Is(err, dag.ErrInvalidIDFormat) {
+		t.Fatalf("expected ErrInvalidIDFormat for task ID, got: %v", err)
+	}
+
+	// 3. Payload too large (>10MB)
+	largePayload := strings.Repeat("A", dag.MaxPayloadSizeBytes+1)
+	err = dag.Validate(dag.Workflow{
+		ID:    "wf-large-payload",
+		Tasks: []dag.Task{{ID: "task1", Payload: largePayload}},
+	})
+	if !errors.Is(err, dag.ErrPayloadTooLarge) {
+		t.Fatalf("expected ErrPayloadTooLarge, got: %v", err)
+	}
+
+	// 4. Negative timeout
+	err = dag.Validate(dag.Workflow{
+		ID:    "wf-neg-timeout",
+		Tasks: []dag.Task{{ID: "task1", TimeoutSec: -1}},
+	})
+	if !errors.Is(err, dag.ErrInvalidTimeout) {
+		t.Fatalf("expected ErrInvalidTimeout for negative timeout, got: %v", err)
+	}
+
+	// 5. Timeout exceeding maximum
+	err = dag.Validate(dag.Workflow{
+		ID:    "wf-max-timeout",
+		Tasks: []dag.Task{{ID: "task1", TimeoutSec: dag.MaxTimeoutSeconds + 1}},
+	})
+	if !errors.Is(err, dag.ErrInvalidTimeout) {
+		t.Fatalf("expected ErrInvalidTimeout for excessive timeout, got: %v", err)
+	}
+
+	// 6. Negative retries
+	err = dag.Validate(dag.Workflow{
+		ID:    "wf-neg-retries",
+		Tasks: []dag.Task{{ID: "task1", MaxRetries: -1}},
+	})
+	if !errors.Is(err, dag.ErrInvalidMaxRetries) {
+		t.Fatalf("expected ErrInvalidMaxRetries for negative retries, got: %v", err)
+	}
+
+	// 7. Retries exceeding limit
+	err = dag.Validate(dag.Workflow{
+		ID:    "wf-max-retries",
+		Tasks: []dag.Task{{ID: "task1", MaxRetries: dag.MaxRetriesLimit + 1}},
+	})
+	if !errors.Is(err, dag.ErrInvalidMaxRetries) {
+		t.Fatalf("expected ErrInvalidMaxRetries for excessive retries, got: %v", err)
+	}
+
+	// 8. Too many tasks (>10000)
+	tooManyTasks := make([]dag.Task, dag.MaxTasksPerWorkflow+1)
+	for i := 0; i < len(tooManyTasks); i++ {
+		tooManyTasks[i] = dag.Task{ID: fmt.Sprintf("t-%d", i)}
+	}
+	err = dag.Validate(dag.Workflow{
+		ID:    "wf-too-many-tasks",
+		Tasks: tooManyTasks,
+	})
+	if !errors.Is(err, dag.ErrTooManyTasks) {
+		t.Fatalf("expected ErrTooManyTasks, got: %v", err)
+	}
+
+	// 9. Valid bounds
+	err = dag.Validate(dag.Workflow{
+		ID: "wf-valid-bounds",
+		Tasks: []dag.Task{
+			{ID: "task_1", TimeoutSec: 3600, MaxRetries: 3, Payload: "hello"},
+			{ID: "task-2", TimeoutSec: 0, MaxRetries: 0, Dependencies: []string{"task_1"}},
+		},
+	})
+	if err != nil {
+		t.Fatalf("expected valid workflow to pass, got: %v", err)
+	}
+}

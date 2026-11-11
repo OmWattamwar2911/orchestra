@@ -32,11 +32,29 @@ func Validate(w Workflow) error {
 	if len(w.Tasks) == 0 {
 		return ErrEmptyWorkflow
 	}
+	if len(w.Tasks) > MaxTasksPerWorkflow {
+		return fmt.Errorf("%w: %d tasks", ErrTooManyTasks, len(w.Tasks))
+	}
+	if w.ID != "" && !idRegex.MatchString(w.ID) {
+		return fmt.Errorf("%w: workflow ID '%s'", ErrInvalidIDFormat, w.ID)
+	}
 
 	taskMap := make(map[string]Task, len(w.Tasks))
 	for _, t := range w.Tasks {
 		if t.ID == "" {
 			return errors.New("task ID cannot be empty")
+		}
+		if !idRegex.MatchString(t.ID) {
+			return fmt.Errorf("%w: task ID '%s'", ErrInvalidIDFormat, t.ID)
+		}
+		if len(t.Payload) > MaxPayloadSizeBytes {
+			return fmt.Errorf("%w: task '%s' payload size %d bytes", ErrPayloadTooLarge, t.ID, len(t.Payload))
+		}
+		if t.TimeoutSec < 0 || t.TimeoutSec > MaxTimeoutSeconds {
+			return fmt.Errorf("%w: task '%s' timeout %d", ErrInvalidTimeout, t.ID, t.TimeoutSec)
+		}
+		if t.MaxRetries < 0 || t.MaxRetries > MaxRetriesLimit {
+			return fmt.Errorf("%w: task '%s' max retries %d", ErrInvalidMaxRetries, t.ID, t.MaxRetries)
 		}
 		if _, exists := taskMap[t.ID]; exists {
 			return &DuplicateTaskIDError{TaskID: t.ID}

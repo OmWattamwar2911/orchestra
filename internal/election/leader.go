@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	clientv3 "go.etcd.io/etcd/client/v3"
@@ -99,14 +100,15 @@ type Candidate struct {
 
 	// mu protects all leadership lifecycle state, session, and leader context cancellation
 	// Invariant protected: Synchronizes leadership state transitions, session handles, and leader context cancellation
-	mu           sync.RWMutex
-	session      *concurrency.Session
-	election     *concurrency.Election
-	leaderKey    string
-	term         int64
-	isLeader     bool
-	leaderCancel context.CancelFunc
-	leaderCtx    context.Context
+	mu              sync.RWMutex
+	session         *concurrency.Session
+	election        *concurrency.Election
+	leaderKey       string
+	term            int64
+	isLeader        bool
+	electionCounter atomic.Int64
+	leaderCancel    context.CancelFunc
+	leaderCtx       context.Context
 }
 
 // Config specifies election parameters for Candidate initialization.
@@ -194,6 +196,11 @@ func (c *Candidate) LeaderContext() context.Context {
 	return context.Background()
 }
 
+// ElectionCount returns the number of times this node has won leadership.
+func (c *Candidate) ElectionCount() int64 {
+	return c.electionCounter.Load()
+}
+
 // Campaign blocks campaigning for leadership until the parent context is cancelled.
 // It automatically re-campaigns after network disconnects or lease loss.
 func (c *Candidate) Campaign(ctx context.Context) error {
@@ -267,6 +274,8 @@ func (c *Candidate) Campaign(ctx context.Context) error {
 		c.leaderCtx = leaderCtx
 		c.leaderCancel = cancelLeader
 		c.mu.Unlock()
+
+		c.electionCounter.Add(1)
 
 		// Update Prometheus leadership metrics
 		metrics.IsLeader.Set(1)
