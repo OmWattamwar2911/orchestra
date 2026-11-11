@@ -1,0 +1,14 @@
+{
+  "seed": 5006,
+  "workflows_submitted": 50,
+  "workflows_succeeded": 50,
+  "workflows_failed": 0,
+  "total_tasks": 1257,
+  "tasks_completed": 1257,
+  "tasks_failed": 0,
+  "tasks_dead_letter": 0,
+  "faults_injected": 2,
+  "duration_ms": 26023,
+  "drain_duration_ms": 9076,
+  "verification_passed": true
+}

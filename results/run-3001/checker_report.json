@@ -1,0 +1,33 @@
+{
+  "run_dir": "results/run-3001",
+  "seed": 3001,
+  "all_passed": false,
+  "total_workflows": 20,
+  "total_tasks": 455,
+  "total_events": 2844,
+  "total_evidence": 1920,
+  "dependency_violations": 0,
+  "single_commit_violations": 0,
+  "no_lost_tasks_violations": 2,
+  "workflow_term_violations": 1,
+  "fencing_violations": 0,
+  "violations": [
+    "NO LOST TASKS VIOLATION: task 'aggregate-sink' in 'wf-s3001-0013' left in non-terminal state 'TASK_STATE_PENDING'",
+    "NO LOST TASKS VIOLATION: task 'fan-8' in 'wf-s3001-0013' left in non-terminal state 'TASK_STATE_READY'",
+    "WORKFLOW TERMINATION VIOLATION: workflow 'wf-s3001-0013' left in non-terminal state 'WORKFLOW_STATE_RUNNING'"
+  ],
+  "duplicate_executions": 5,
+  "duplicate_task_details": {
+    "wf-s1001-0006/chain-t24": 2,
+    "wf-s1001-0007/chain-t18": 4,
+    "wf-s1001-0015/L2-t0": 2,
+    "wf-s3001-0014/fan-30": 2,
+    "wf-s3001-0017/chain-t1": 2
+  },
+  "faults_by_type": {
+    "RESTART_ETCD": 1
+  },
+  "leader_failovers": 2,
+  "mean_failover_ms": 0,
+  "max_failover_ms": 0
+}

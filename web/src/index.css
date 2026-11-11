@@ -1,0 +1,110 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Authentic Poster Modernist Tokens */
+  --color-cream: #E3E2DE;
+  --color-cobalt: #1351AA;
+  --color-jet: #141414;
+  --color-deep-gray: #444343;
+  --color-muted: #7A7A7A;
+  --color-muted-strong: #5C5C5C;
+  --color-hairline: #C7C7C7;
+  --color-amber: #B86E00;
+  --color-red: #B3261E;
+
+  /* Aliases */
+  --color-canvas: var(--color-cream);
+  --color-surface: var(--color-cream);
+  --color-surface-subtle: rgba(255, 255, 255, 0.2);
+  --color-border-subtle: var(--color-hairline);
+  --color-border-default: var(--color-hairline);
+  --color-text-primary: var(--color-jet);
+  --color-text-secondary: var(--color-deep-gray);
+  --color-text-muted: var(--color-muted);
+  --color-accent: var(--color-cobalt);
+}
+
+/* Explicit Brand Utilities */
+.bg-cobalt {
+  background-color: #1351AA !important;
+}
+.text-cobalt {
+  color: #1351AA !important;
+}
+.border-cobalt {
+  border-color: #1351AA !important;
+}
+.bg-cream {
+  background-color: #E3E2DE !important;
+}
+.text-jet {
+  color: #141414 !important;
+}
+.bg-jet {
+  background-color: #141414 !important;
+}
+
+* {
+  box-sizing: border-box;
+  border-radius: 0px !important;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--color-cream);
+  color: var(--color-jet);
+  font-family: 'General Sans', 'Aileron', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Linear transitions strictly on color / background-color */
+button,
+a,
+input,
+select,
+textarea {
+  transition: background-color 0.3s linear, color 0.3s linear, border-color 0.3s linear;
+}
+
+/* Visible Square Keyboard Focus */
+:focus-visible {
+  outline: 2px solid var(--color-cobalt) !important;
+  outline-offset: 2px !important;
+}
+
+/* State Hatches */
+.hatch-amber {
+  background: repeating-linear-gradient(
+    45deg,
+    rgba(184, 110, 0, 0.25),
+    rgba(184, 110, 0, 0.25) 4px,
+    transparent 4px,
+    transparent 8px
+  );
+}
+
+.hatch-cancelled {
+  background: repeating-linear-gradient(
+    -45deg,
+    rgba(122, 122, 122, 0.3),
+    rgba(122, 122, 122, 0.3) 2px,
+    transparent 2px,
+    transparent 6px
+  );
+}
+
+/* Reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

@@ -1,0 +1,3 @@
+{"timestamp_ns":1794383634179450300,"timestamp":"2026-11-11T13:23:54.1794503+05:30","type":"PAUSE_LEADER_ZOMBIE_START","target":"orchestra-node-2","details":"paused leader container for 7.5s (lease TTL=5s) to trigger zombie fencing check"}
+{"timestamp_ns":1794383641771055000,"timestamp":"2026-11-11T13:24:01.771055+05:30","type":"PAUSE_LEADER_ZOMBIE_END","target":"orchestra-node-2","details":"unpaused zombie ex-leader; subsequent mutating writes must be rejected by fencing CAS"}
+{"timestamp_ns":1794383641882251100,"timestamp":"2026-11-11T13:24:01.8822511+05:30","type":"KILL_WORKER","target":"distributed-scheduler-worker-5","details":"killed worker container via docker kill"}

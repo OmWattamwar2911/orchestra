@@ -1,0 +1,15 @@
+{
+  "seed": 3001,
+  "workflows_submitted": 20,
+  "workflows_succeeded": 19,
+  "workflows_failed": 1,
+  "total_tasks": 455,
+  "tasks_completed": 453,
+  "tasks_failed": 0,
+  "tasks_dead_letter": 0,
+  "faults_injected": 1,
+  "duration_ms": 185756,
+  "drain_duration_ms": 180000,
+  "verification_passed": true,
+  "notes": "cluster drain timed out before all workflows reached terminal state"
+}

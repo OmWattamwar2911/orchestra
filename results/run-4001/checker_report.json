@@ -1,0 +1,40 @@
+{
+  "run_dir": "results/run-4001",
+  "seed": 4001,
+  "all_passed": true,
+  "total_workflows": 20,
+  "total_tasks": 491,
+  "total_events": 4337,
+  "total_evidence": 2926,
+  "dependency_violations": 0,
+  "single_commit_violations": 0,
+  "no_lost_tasks_violations": 0,
+  "workflow_term_violations": 0,
+  "fencing_violations": 0,
+  "violations": [],
+  "duplicate_executions": 14,
+  "duplicate_task_details": {
+    "wf-s1001-0006/chain-t24": 2,
+    "wf-s1001-0007/chain-t18": 4,
+    "wf-s1001-0015/L2-t0": 2,
+    "wf-s3001-0014/fan-30": 2,
+    "wf-s3001-0017/chain-t1": 2,
+    "wf-s4001-0000/branch-5": 3,
+    "wf-s4001-0003/branch-12": 2,
+    "wf-s4001-0007/sink": 2,
+    "wf-s4001-0008/L1-t4": 2,
+    "wf-s4001-0008/L3-t0": 2,
+    "wf-s4001-0010/fan-34": 2,
+    "wf-s4001-0011/chain-t11": 2,
+    "wf-s4001-0013/fan-1": 2,
+    "wf-s4001-0016/L2-t1": 2
+  },
+  "faults_by_type": {
+    "KILL_WORKER": 1,
+    "PAUSE_LEADER_ZOMBIE_END": 1,
+    "PAUSE_LEADER_ZOMBIE_START": 1
+  },
+  "leader_failovers": 4,
+  "mean_failover_ms": 5308,
+  "max_failover_ms": 5308
+}

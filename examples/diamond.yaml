@@ -1,0 +1,42 @@
+id: diamond-pipeline
+name: Diamond Pipeline (fetch -> [transformA, transformB] -> merge -> publish)
+failure_policy: FAIL_FAST
+tasks:
+  - id: fetch
+    type: echo
+    payload: "fetched raw data records"
+    timeout_seconds: 30
+    max_retries: 2
+
+  - id: transformA
+    type: echo
+    payload: "normalized branch A data"
+    timeout_seconds: 30
+    max_retries: 2
+    dependencies:
+      - fetch
+
+  - id: transformB
+    type: echo
+    payload: "aggregated branch B data"
+    timeout_seconds: 30
+    max_retries: 2
+    dependencies:
+      - fetch
+
+  - id: merge
+    type: echo
+    payload: "merged transformed branches A and B"
+    timeout_seconds: 30
+    max_retries: 2
+    dependencies:
+      - transformA
+      - transformB
+
+  - id: publish
+    type: echo
+    payload: "published final verified result"
+    timeout_seconds: 30
+    max_retries: 2
+    dependencies:
+      - merge

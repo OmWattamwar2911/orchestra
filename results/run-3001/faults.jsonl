@@ -1,0 +1,1 @@
+{"timestamp_ns":1794383147653175500,"timestamp":"2026-11-11T13:15:47.6531755+05:30","type":"RESTART_ETCD","target":"orchestra-etcd2","details":"restarted etcd consensus node via docker restart"}

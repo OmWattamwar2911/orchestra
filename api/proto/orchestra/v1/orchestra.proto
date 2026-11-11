@@ -1,0 +1,218 @@
+syntax = "proto3";
+
+package orchestra.v1;
+
+option go_package = "orchestra/api/proto/orchestra/v1;orchestrapb";
+
+// Workflow states
+enum WorkflowState {
+  WORKFLOW_STATE_UNSPECIFIED = 0;
+  WORKFLOW_STATE_RUNNING = 1;
+  WORKFLOW_STATE_SUCCEEDED = 2;
+  WORKFLOW_STATE_FAILED = 3;
+  WORKFLOW_STATE_CANCELLED = 4;
+}
+
+// Failure policies
+enum FailurePolicy {
+  FAILURE_POLICY_UNSPECIFIED = 0;
+  FAILURE_POLICY_FAIL_FAST = 1;
+  FAILURE_POLICY_CONTINUE = 2;
+}
+
+// Task states
+enum TaskState {
+  TASK_STATE_UNSPECIFIED = 0;
+  TASK_STATE_PENDING = 1;
+  TASK_STATE_READY = 2;
+  TASK_STATE_ASSIGNED = 3;
+  TASK_STATE_RUNNING = 4;
+  TASK_STATE_COMPLETED = 5;
+  TASK_STATE_FAILED = 6;
+  TASK_STATE_SKIPPED = 7;
+  TASK_STATE_CANCELLED = 8;
+  TASK_STATE_DEAD_LETTER = 9;
+}
+
+// Task definition submitted as part of a workflow DAG
+message TaskSpec {
+  string id = 1;
+  string type = 2;
+  string payload = 3;
+  int64 timeout_seconds = 4;
+  int32 max_retries = 5;
+  repeated string dependencies = 6;
+}
+
+// Runtime status of a task
+message TaskStatus {
+  string id = 1;
+  string workflow_id = 2;
+  TaskState state = 3;
+  int32 current_attempt = 4;
+  string assigned_worker = 5;
+  int64 started_at = 6;
+  int64 completed_at = 7;
+  string error_message = 8;
+  bytes result_data = 9;
+  int64 mod_revision = 10;
+}
+
+// Full task entity
+message Task {
+  TaskSpec spec = 1;
+  TaskStatus status = 2;
+}
+
+// Workflow specification
+message WorkflowSpec {
+  string id = 1;
+  string name = 2;
+  FailurePolicy failure_policy = 3;
+  repeated TaskSpec tasks = 4;
+}
+
+// Workflow runtime status
+message WorkflowStatus {
+  string id = 1;
+  WorkflowState state = 2;
+  int64 created_at = 3;
+  int64 completed_at = 4;
+  int32 total_tasks = 5;
+  int32 completed_tasks = 6;
+  int32 failed_tasks = 7;
+  string error_message = 8;
+}
+
+// Full workflow entity
+message Workflow {
+  WorkflowSpec spec = 1;
+  WorkflowStatus status = 2;
+  repeated Task tasks = 3;
+}
+
+// Orchestrator Service - Client Facing API
+service OrchestratorService {
+  rpc SubmitWorkflow(SubmitWorkflowRequest) returns (SubmitWorkflowResponse);
+  rpc GetWorkflow(GetWorkflowRequest) returns (GetWorkflowResponse);
+  rpc ListWorkflows(ListWorkflowsRequest) returns (ListWorkflowsResponse);
+  rpc CancelWorkflow(CancelWorkflowRequest) returns (CancelWorkflowResponse);
+  rpc WatchWorkflow(WatchWorkflowRequest) returns (stream WatchWorkflowResponse);
+}
+
+message SubmitWorkflowRequest {
+  WorkflowSpec workflow = 1;
+}
+
+message SubmitWorkflowResponse {
+  string workflow_id = 1;
+  bool accepted = 2;
+  string message = 3;
+}
+
+message GetWorkflowRequest {
+  string workflow_id = 1;
+}
+
+message GetWorkflowResponse {
+  Workflow workflow = 1;
+}
+
+message ListWorkflowsRequest {
+  int32 page_size = 1;
+  string page_token = 2;
+}
+
+message ListWorkflowsResponse {
+  repeated Workflow workflows = 1;
+  string next_page_token = 2;
+}
+
+message CancelWorkflowRequest {
+  string workflow_id = 1;
+  string reason = 2;
+}
+
+message CancelWorkflowResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message WatchWorkflowRequest {
+  string workflow_id = 1;
+}
+
+message WatchWorkflowResponse {
+  string workflow_id = 1;
+  WorkflowState workflow_state = 2;
+  TaskStatus task_update = 3;
+  int64 timestamp = 4;
+}
+
+// Task execution assignment sent from leader to worker
+message TaskAssignment {
+  string workflow_id = 1;
+  TaskSpec task = 2;
+  int32 attempt = 3;
+  int64 leader_fencing_token = 4;
+}
+
+// Task outcome reported by worker
+enum TaskOutcome {
+  TASK_OUTCOME_UNSPECIFIED = 0;
+  TASK_OUTCOME_SUCCESS = 1;
+  TASK_OUTCOME_FAILURE = 2;
+  TASK_OUTCOME_TIMEOUT = 3;
+}
+
+// Worker Service - Worker Coordination API
+service WorkerService {
+  rpc RegisterWorker(RegisterWorkerRequest) returns (RegisterWorkerResponse);
+  rpc Heartbeat(HeartbeatRequest) returns (HeartbeatResponse);
+  rpc StreamTasks(StreamTasksRequest) returns (stream TaskAssignment);
+  rpc ReportResult(ReportResultRequest) returns (ReportResultResponse);
+}
+
+message RegisterWorkerRequest {
+  string worker_id = 1;
+  string address = 2;
+  int32 capacity = 3;
+  repeated string supported_types = 4;
+}
+
+message RegisterWorkerResponse {
+  bool registered = 1;
+  int64 heartbeat_interval_seconds = 2;
+  string leader_id = 3;
+}
+
+message HeartbeatRequest {
+  string worker_id = 1;
+  repeated string running_task_ids = 2;
+  int64 timestamp = 3;
+}
+
+message HeartbeatResponse {
+  bool acknowledged = 1;
+  repeated string abort_task_ids = 2;
+}
+
+message StreamTasksRequest {
+  string worker_id = 1;
+}
+
+message ReportResultRequest {
+  string workflow_id = 1;
+  string task_id = 2;
+  int32 attempt_id = 3;
+  int64 fencing_token = 4;
+  string worker_id = 5;
+  TaskOutcome outcome = 6;
+  bytes output = 7;
+  string error_message = 8;
+}
+
+message ReportResultResponse {
+  bool committed = 1;
+  string message = 2;
+}

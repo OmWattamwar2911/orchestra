@@ -1,0 +1,8 @@
+.git
+bin
+results
+web/node_modules
+web/dist
+tmp
+.gemini
+*.log

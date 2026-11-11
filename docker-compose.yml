@@ -1,0 +1,249 @@
+services:
+  # =========================================================================
+  # 3-Node etcd Raft Consensus Cluster
+  # =========================================================================
+  etcd1:
+    image: quay.io/coreos/etcd:v3.5.14
+    container_name: orchestra-etcd1
+    restart: unless-stopped
+    environment:
+      - ETCD_NAME=etcd1
+      - ETCD_DATA_DIR=/etcd-data
+      - ETCD_LISTEN_CLIENT_URLS=http://0.0.0.0:2379
+      - ETCD_ADVERTISE_CLIENT_URLS=http://etcd1:2379
+      - ETCD_LISTEN_PEER_URLS=http://0.0.0.0:2380
+      - ETCD_INITIAL_ADVERTISE_PEER_URLS=http://etcd1:2380
+      - ETCD_INITIAL_CLUSTER=etcd1=http://etcd1:2380,etcd2=http://etcd2:2380,etcd3=http://etcd3:2380
+      - ETCD_INITIAL_CLUSTER_TOKEN=orchestra-etcd-cluster
+      - ETCD_INITIAL_CLUSTER_STATE=new
+      - ETCD_AUTO_COMPACTION_RETENTION=1
+    ports:
+      - "2379:2379"
+    healthcheck:
+      test: ["CMD", "etcdctl", "endpoint", "health"]
+      interval: 3s
+      timeout: 3s
+      retries: 5
+    networks:
+      - orchestra-net
+    volumes:
+      - etcd1-data:/etcd-data
+
+  etcd2:
+    image: quay.io/coreos/etcd:v3.5.14
+    container_name: orchestra-etcd2
+    restart: unless-stopped
+    environment:
+      - ETCD_NAME=etcd2
+      - ETCD_DATA_DIR=/etcd-data
+      - ETCD_LISTEN_CLIENT_URLS=http://0.0.0.0:2379
+      - ETCD_ADVERTISE_CLIENT_URLS=http://etcd2:2379
+      - ETCD_LISTEN_PEER_URLS=http://0.0.0.0:2380
+      - ETCD_INITIAL_ADVERTISE_PEER_URLS=http://etcd2:2380
+      - ETCD_INITIAL_CLUSTER=etcd1=http://etcd1:2380,etcd2=http://etcd2:2380,etcd3=http://etcd3:2380
+      - ETCD_INITIAL_CLUSTER_TOKEN=orchestra-etcd-cluster
+      - ETCD_INITIAL_CLUSTER_STATE=new
+      - ETCD_AUTO_COMPACTION_RETENTION=1
+    healthcheck:
+      test: ["CMD", "etcdctl", "endpoint", "health"]
+      interval: 3s
+      timeout: 3s
+      retries: 5
+    networks:
+      - orchestra-net
+    volumes:
+      - etcd2-data:/etcd-data
+
+  etcd3:
+    image: quay.io/coreos/etcd:v3.5.14
+    container_name: orchestra-etcd3
+    restart: unless-stopped
+    environment:
+      - ETCD_NAME=etcd3
+      - ETCD_DATA_DIR=/etcd-data
+      - ETCD_LISTEN_CLIENT_URLS=http://0.0.0.0:2379
+      - ETCD_ADVERTISE_CLIENT_URLS=http://etcd3:2379
+      - ETCD_LISTEN_PEER_URLS=http://0.0.0.0:2380
+      - ETCD_INITIAL_ADVERTISE_PEER_URLS=http://etcd3:2380
+      - ETCD_INITIAL_CLUSTER=etcd1=http://etcd1:2380,etcd2=http://etcd2:2380,etcd3=http://etcd3:2380
+      - ETCD_INITIAL_CLUSTER_TOKEN=orchestra-etcd-cluster
+      - ETCD_INITIAL_CLUSTER_STATE=new
+      - ETCD_AUTO_COMPACTION_RETENTION=1
+    healthcheck:
+      test: ["CMD", "etcdctl", "endpoint", "health"]
+      interval: 3s
+      timeout: 3s
+      retries: 5
+    networks:
+      - orchestra-net
+    volumes:
+      - etcd3-data:/etcd-data
+
+  # =========================================================================
+  # 3 Orchestrator Nodes (1 Elected Leader + 2 Warm Standbys)
+  # =========================================================================
+  orchestrator1:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile
+      target: orchestrator
+    container_name: orchestra-node-1
+    restart: unless-stopped
+    command: [
+      "-node-id", "orchestrator-1",
+      "-etcd-endpoints", "etcd1:2379,etcd2:2379,etcd3:2379",
+      "-grpc-port", "50051",
+      "-http-port", "8080",
+      "-grpc-advertise-addr", "orchestrator1:50051"
+    ]
+    ports:
+      - "50051:50051"
+      - "8084:8080"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/healthz"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 3s
+    depends_on:
+      etcd1:
+        condition: service_healthy
+      etcd2:
+        condition: service_healthy
+      etcd3:
+        condition: service_healthy
+    networks:
+      - orchestra-net
+
+  orchestrator2:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile
+      target: orchestrator
+    container_name: orchestra-node-2
+    restart: unless-stopped
+    command: [
+      "-node-id", "orchestrator-2",
+      "-etcd-endpoints", "etcd1:2379,etcd2:2379,etcd3:2379",
+      "-grpc-port", "50051",
+      "-http-port", "8080",
+      "-grpc-advertise-addr", "orchestrator2:50051"
+    ]
+    ports:
+      - "50052:50051"
+      - "8081:8080"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/healthz"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 3s
+    depends_on:
+      etcd1:
+        condition: service_healthy
+      etcd2:
+        condition: service_healthy
+      etcd3:
+        condition: service_healthy
+    networks:
+      - orchestra-net
+
+  orchestrator3:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile
+      target: orchestrator
+    container_name: orchestra-node-3
+    restart: unless-stopped
+    command: [
+      "-node-id", "orchestrator-3",
+      "-etcd-endpoints", "etcd1:2379,etcd2:2379,etcd3:2379",
+      "-grpc-port", "50051",
+      "-http-port", "8080",
+      "-grpc-advertise-addr", "orchestrator3:50051"
+    ]
+    ports:
+      - "50053:50051"
+      - "8082:8080"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/healthz"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 3s
+    depends_on:
+      etcd1:
+        condition: service_healthy
+      etcd2:
+        condition: service_healthy
+      etcd3:
+        condition: service_healthy
+    networks:
+      - orchestra-net
+
+  # =========================================================================
+  # 5 Scalable Worker Daemons
+  # =========================================================================
+  worker:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile
+      target: worker
+    restart: unless-stopped
+    deploy:
+      replicas: 5
+    command: [
+      "-etcd-endpoints", "etcd1:2379,etcd2:2379,etcd3:2379",
+      "-evidence-log", "/results",
+      "-capacity", "4",
+      "-http-port", "8081"
+    ]
+    volumes:
+      - evidence-data:/results
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/healthz"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 3s
+    depends_on:
+      orchestrator1:
+        condition: service_started
+      orchestrator2:
+        condition: service_started
+      orchestrator3:
+        condition: service_started
+    networks:
+      - orchestra-net
+
+  # =========================================================================
+  # React Web Dashboard Gateway
+  # =========================================================================
+  web:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile.web
+    container_name: orchestra-dashboard
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    depends_on:
+      - orchestrator1
+      - orchestrator2
+      - orchestrator3
+    networks:
+      - orchestra-net
+
+# ===========================================================================
+# Volumes & Networks
+# ===========================================================================
+volumes:
+  evidence-data:
+    name: orchestra-evidence-data
+  etcd1-data:
+  etcd2-data:
+  etcd3-data:
+
+networks:
+  orchestra-net:
+    driver: bridge

@@ -1,0 +1,10 @@
+bin/
+dist/
+web/dist/
+node_modules/
+web/node_modules/
+*.exe
+*.test
+*.out
+*.log
+
