@@ -2,7 +2,7 @@
 
 This living status document tracks the verification state, test evidence, and known limitations for every requirement in Orchestra.
 
-Last Updated: Phase 4 End-to-End Verification Complete (2026-11-11)
+Last Updated: Phase 5 Chaos Harness & Invariant Verification Complete (2026-11-11)
 
 ---
 
@@ -56,7 +56,8 @@ Last Updated: Phase 4 End-to-End Verification Complete (2026-11-11)
 | **Independent Invariant Checker** | **DONE** | `cmd/checker/`, `internal/checker/`<br>`cmd/checker/collector.go` | Verifies Dependency Order, Single Commit, No Lost Tasks, Workflow Termination, and Fencing Barrier. Live etcd artifact collector integrated. |
 | **Checker Mutation Tests** | **DONE** | `cmd/checker/mutation_test.go` | Proves checker fails when synthetic violations are injected. |
 | **Process-Based Chaos Execution** | **DONE** | `cmd/chaos/`, `scripts/e2e.ps1` | Supports both containerized Docker Compose cluster and local process-based execution. |
-| **10 Seeded Runs & summary.json** | **PARTIAL** | `results/` | Initial runs exist; Phase 5 will execute and export the full refreshed suite. |
+| **10 Seeded Runs & summary.json** | **DONE** | `results/chaos-suite/`<br>`results/summary.json`<br>`results/summary.md` | 10 of 10 seeded chaos runs (seeds 5001-5010) passed 100% with 0 invariant violations across 500 workflows, 11,419 tasks, 266,184 audit events, 178,344 worker records, and 123 leader failovers. |
+| **Sharded Priority Queue Scale Benchmark** | **DONE** | `internal/queue/sharded.go`<br>`results/sharded_benchmark.txt` | Benchmarked 32-shard priority queue under chaos contention (482.3 ns/op vs Coarse 1427 ns/op) and 32 goroutines (295.9 ns/op vs Coarse 970.2 ns/op, >3.2x speedup). |
 
 ---
 
