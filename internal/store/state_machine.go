@@ -8,15 +8,15 @@ import (
 )
 
 var (
-	ErrIllegalStateTransition = errors.New("illegal state machine transition")
-	ErrTaskInTerminalState    = errors.New("task is already in a terminal state")
+	ErrIllegalStateTransition  = errors.New("illegal state machine transition")
+	ErrTaskInTerminalState     = errors.New("task is already in a terminal state")
 	ErrWorkflowInTerminalState = errors.New("workflow is already in a terminal state")
-	ErrStaleAttempt           = errors.New("attempt ID mismatch or stale attempt report")
-	ErrFencingTokenMismatch   = errors.New("fencing check failed: node is no longer the active leader")
-	ErrCASConflict            = errors.New("optimistic concurrency conflict: task mod revision changed")
-	ErrWorkflowNotFound       = errors.New("workflow not found in store")
-	ErrTaskNotFound           = errors.New("task not found in store")
-	ErrWorkflowAlreadyExists  = errors.New("workflow already exists")
+	ErrStaleAttempt            = errors.New("attempt ID mismatch or stale attempt report")
+	ErrFencingTokenMismatch    = errors.New("fencing check failed: node is no longer the active leader")
+	ErrCASConflict             = errors.New("optimistic concurrency conflict: task mod revision changed")
+	ErrWorkflowNotFound        = errors.New("workflow not found in store")
+	ErrTaskNotFound            = errors.New("task not found in store")
+	ErrWorkflowAlreadyExists   = errors.New("workflow already exists")
 )
 
 // IsTerminalTaskState returns true if the task state is terminal (no further transitions allowed).

@@ -12,8 +12,8 @@ import (
 
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/concurrency"
-	"orchestra/internal/etcdstore"
 	"orchestra/internal/metrics"
+	"orchestra/internal/store"
 )
 
 var (
@@ -135,7 +135,7 @@ func NewCandidate(cfg Config) (*Candidate, error) {
 	}
 	prefix := cfg.ElectionPrefix
 	if prefix == "" {
-		prefix = etcdstore.ElectionKey
+		prefix = store.ElectionKey
 	}
 	logger := cfg.Logger
 	if logger == nil {

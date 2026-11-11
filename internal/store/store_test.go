@@ -208,6 +208,9 @@ func TestStore_StateTransitionsAndValidation(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetTask failed: %v", err)
 	}
+	if task.Status.State != pb.TaskState_TASK_STATE_READY {
+		t.Fatalf("expected initial state READY, got %s", task.Status.State)
+	}
 
 	// Illegal transition: READY -> COMPLETED directly (must go through ASSIGNED/RUNNING)
 	_, _, err = s.TransitionTaskState(ctx, fencer, "wf-transitions", "T1", modRev, pb.TaskState_TASK_STATE_COMPLETED, nil)
@@ -233,6 +236,9 @@ func TestStore_StateTransitionsAndValidation(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ASSIGNED -> RUNNING failed: %v", err)
 	}
+	if task.Status.State != pb.TaskState_TASK_STATE_RUNNING {
+		t.Fatalf("expected state RUNNING, got %s", task.Status.State)
+	}
 
 	// Legal transition: RUNNING -> COMPLETED
 	task, modRev, err = s.TransitionTaskState(ctx, fencer, "wf-transitions", "T1", modRev, pb.TaskState_TASK_STATE_COMPLETED, func(t *pb.Task) {
@@ -240,6 +246,9 @@ func TestStore_StateTransitionsAndValidation(t *testing.T) {
 	})
 	if err != nil {
 		t.Fatalf("RUNNING -> COMPLETED failed: %v", err)
+	}
+	if task.Status.State != pb.TaskState_TASK_STATE_COMPLETED {
+		t.Fatalf("expected state COMPLETED, got %s", task.Status.State)
 	}
 
 	// Illegal transition out of terminal state: COMPLETED -> READY
@@ -484,7 +493,7 @@ func TestStore_LeaderCrashMidWorkflow_RecoveryFinishesWorkflow(t *testing.T) {
 	_, revB, _ = s.TransitionTaskState(ctx, cand1, "wf-failover-diamond", "B", revB, pb.TaskState_TASK_STATE_ASSIGNED, func(t *pb.Task) {
 		t.Status.AssignedWorker = "worker-1"
 	})
-	_, revB, _ = s.TransitionTaskState(ctx, cand1, "wf-failover-diamond", "B", revB, pb.TaskState_TASK_STATE_RUNNING, nil)
+	_, _, _ = s.TransitionTaskState(ctx, cand1, "wf-failover-diamond", "B", revB, pb.TaskState_TASK_STATE_RUNNING, nil)
 
 	// Task C is also READY
 	_, revC, _ := s.GetTask(ctx, "wf-failover-diamond", "C")
@@ -554,7 +563,7 @@ func TestStore_LeaderCrashMidWorkflow_RecoveryFinishesWorkflow(t *testing.T) {
 	_, revBRecovered, _ = s.TransitionTaskState(ctx, cand2, "wf-failover-diamond", "B", revBRecovered, pb.TaskState_TASK_STATE_ASSIGNED, func(t *pb.Task) {
 		t.Status.AssignedWorker = "worker-2"
 	})
-	_, revBRecovered, _ = s.TransitionTaskState(ctx, cand2, "wf-failover-diamond", "B", revBRecovered, pb.TaskState_TASK_STATE_RUNNING, nil)
+	_, _, _ = s.TransitionTaskState(ctx, cand2, "wf-failover-diamond", "B", revBRecovered, pb.TaskState_TASK_STATE_RUNNING, nil)
 	commitB, err := s.CommitTaskResult(ctx, cand2, &pb.ReportResultRequest{
 		WorkflowId: "wf-failover-diamond",
 		TaskId:     "B",
@@ -571,7 +580,7 @@ func TestStore_LeaderCrashMidWorkflow_RecoveryFinishesWorkflow(t *testing.T) {
 	_, revC, _ = s.TransitionTaskState(ctx, cand2, "wf-failover-diamond", "C", revC, pb.TaskState_TASK_STATE_ASSIGNED, func(t *pb.Task) {
 		t.Status.AssignedWorker = "worker-2"
 	})
-	_, revC, _ = s.TransitionTaskState(ctx, cand2, "wf-failover-diamond", "C", revC, pb.TaskState_TASK_STATE_RUNNING, nil)
+	_, _, _ = s.TransitionTaskState(ctx, cand2, "wf-failover-diamond", "C", revC, pb.TaskState_TASK_STATE_RUNNING, nil)
 	commitC, err := s.CommitTaskResult(ctx, cand2, &pb.ReportResultRequest{
 		WorkflowId: "wf-failover-diamond",
 		TaskId:     "C",
@@ -591,7 +600,7 @@ func TestStore_LeaderCrashMidWorkflow_RecoveryFinishesWorkflow(t *testing.T) {
 	_, revD, _ = s.TransitionTaskState(ctx, cand2, "wf-failover-diamond", "D", revD, pb.TaskState_TASK_STATE_ASSIGNED, func(t *pb.Task) {
 		t.Status.AssignedWorker = "worker-2"
 	})
-	_, revD, _ = s.TransitionTaskState(ctx, cand2, "wf-failover-diamond", "D", revD, pb.TaskState_TASK_STATE_RUNNING, nil)
+	_, _, _ = s.TransitionTaskState(ctx, cand2, "wf-failover-diamond", "D", revD, pb.TaskState_TASK_STATE_RUNNING, nil)
 	commitD, err := s.CommitTaskResult(ctx, cand2, &pb.ReportResultRequest{
 		WorkflowId: "wf-failover-diamond",
 		TaskId:     "D",
@@ -604,14 +613,14 @@ func TestStore_LeaderCrashMidWorkflow_RecoveryFinishesWorkflow(t *testing.T) {
 	}
 
 	// Workflow completes to SUCCEEDED
-	wfFinal, wfRev, _ := s.GetWorkflow(ctx, "wf-failover-diamond")
+	_, wfRev, _ := s.GetWorkflow(ctx, "wf-failover-diamond")
 	err = s.TransitionWorkflowState(ctx, cand2, "wf-failover-diamond", wfRev, pb.WorkflowState_WORKFLOW_STATE_SUCCEEDED)
 	if err != nil {
 		t.Fatalf("failed to transition workflow to SUCCEEDED: %v", err)
 	}
 
 	// Verify final workflow state
-	wfFinal, _, err = s.GetWorkflow(ctx, "wf-failover-diamond")
+	wfFinal, _, err := s.GetWorkflow(ctx, "wf-failover-diamond")
 	if err != nil {
 		t.Fatalf("failed to read back workflow: %v", err)
 	}

@@ -155,12 +155,9 @@ func connectToLeader(ctx context.Context, addrs []string) (*grpc.ClientConn, pb.
 	var fallbackAddr string
 
 	for _, addr := range addrs {
-		dialCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
-		conn, err := grpc.DialContext(dialCtx, addr,
+		conn, err := grpc.NewClient(addr,
 			grpc.WithTransportCredentials(insecure.NewCredentials()),
-			grpc.WithBlock(),
 		)
-		cancel()
 		if err != nil {
 			lastErr = err
 			continue
@@ -212,12 +209,9 @@ func submitWorkflow(ctx context.Context, client pb.OrchestratorServiceClient, sp
 			if altAddr == currentAddr {
 				continue
 			}
-			dialCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
-			altConn, err := grpc.DialContext(dialCtx, altAddr,
+			altConn, err := grpc.NewClient(altAddr,
 				grpc.WithTransportCredentials(insecure.NewCredentials()),
-				grpc.WithBlock(),
 			)
-			cancel()
 			if err != nil {
 				continue
 			}

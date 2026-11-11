@@ -47,9 +47,9 @@ type Worker struct {
 	logger         *slog.Logger
 
 	// Lease management
-	leaseID        clientv3.LeaseID
-	keepAliveStop  context.CancelFunc
-	keepAliveDone  chan struct{}
+	leaseID       clientv3.LeaseID
+	keepAliveStop context.CancelFunc
+	keepAliveDone chan struct{}
 
 	// Bounded worker pool & graceful shutdown
 	semaphore      chan struct{}
@@ -59,10 +59,10 @@ type Worker struct {
 	// gRPC connection to current cluster leader
 	// mu protects connection lifecycle, client instantiation, and active leader metadata
 	// Invariant protected: Synchronizes atomic reconnection between leader failovers
-	mu             sync.Mutex
-	conn           *grpc.ClientConn
-	grpcClient     pb.WorkerServiceClient
-	activeLeader   *election.LeaderInfo
+	mu           sync.Mutex
+	conn         *grpc.ClientConn
+	grpcClient   pb.WorkerServiceClient
+	activeLeader *election.LeaderInfo
 }
 
 // NewWorker initializes a worker daemon.
@@ -246,12 +246,8 @@ func (w *Worker) runLeaderSupervisionLoop(ctx context.Context) error {
 
 // connectAndStream connects to the specified leader, registers capacity, and streams tasks until disconnect.
 func (w *Worker) connectAndStream(ctx context.Context, leader *election.LeaderInfo, targetAddr string) error {
-	dialCtx, dialCancel := context.WithTimeout(ctx, 5*time.Second)
-	defer dialCancel()
-
-	conn, err := grpc.DialContext(dialCtx, targetAddr,
+	conn, err := grpc.NewClient(targetAddr,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
-		grpc.WithBlock(),
 	)
 	if err != nil {
 		return fmt.Errorf("failed to dial orchestrator leader at %s: %w", targetAddr, err)

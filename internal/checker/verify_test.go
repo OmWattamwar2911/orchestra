@@ -13,8 +13,8 @@ import (
 	"go.etcd.io/etcd/server/v3/embed"
 	pb "orchestra/api/proto/orchestra/v1"
 	"orchestra/internal/checker"
-	"orchestra/internal/etcdstore"
 	"orchestra/internal/evidence"
+	"orchestra/internal/store"
 )
 
 func startTestEtcd(t *testing.T) (*embed.Etcd, *clientv3.Client, func()) {
@@ -80,7 +80,7 @@ func TestInvariantChecker_AllInvariants(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	store := etcdstore.NewStore(client)
+	s := store.NewStore(client)
 
 	// Set up valid completed workflow
 	wf := &pb.Workflow{
@@ -99,7 +99,7 @@ func TestInvariantChecker_AllInvariants(t *testing.T) {
 			CompletedAt: 2000,
 		},
 	}
-	_ = store.PutWorkflow(ctx, nil, wf)
+	_ = s.PutWorkflow(ctx, nil, wf)
 
 	tA := &pb.Task{
 		Spec: wf.Spec.Tasks[0],
@@ -119,8 +119,8 @@ func TestInvariantChecker_AllInvariants(t *testing.T) {
 			CompletedAt: 2000,
 		},
 	}
-	_, _ = store.PutTask(ctx, nil, tA)
-	_, _ = store.PutTask(ctx, nil, tB)
+	_, _ = s.PutTask(ctx, nil, tA)
+	_, _ = s.PutTask(ctx, nil, tB)
 
 	// Record legitimate sequence: taskA starts (100ms), finishes (1000ms), then taskB starts (1100ms), finishes (2000ms)
 	_ = evLogger.Record(evidence.EventRecord{
@@ -159,7 +159,7 @@ func TestInvariantChecker_AllInvariants(t *testing.T) {
 	})
 	_ = evLogger.Close()
 
-	chk := checker.NewInvariantChecker(store, evPath)
+	chk := checker.NewInvariantChecker(s, evPath)
 	res, err := chk.VerifyAll(ctx)
 	if err != nil {
 		t.Fatalf("verification error: %v", err)

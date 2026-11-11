@@ -48,12 +48,11 @@ func (c *Client) Connect(ctx context.Context) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	conn, err := grpc.DialContext(ctx, c.orchestratorAddr,
+	conn, err := grpc.NewClient(c.orchestratorAddr,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
-		grpc.WithBlock(),
 	)
 	if err != nil {
-		return fmt.Errorf("failed to dial orchestrator at %s: %w", c.orchestratorAddr, err)
+		return fmt.Errorf("failed to create client for orchestrator at %s: %w", c.orchestratorAddr, err)
 	}
 
 	c.conn = conn

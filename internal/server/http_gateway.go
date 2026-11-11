@@ -511,11 +511,8 @@ func (g *HTTPGateway) handleSubmitWorkflow(w http.ResponseWriter, r *http.Reques
 		targetAddr = "127.0.0.1:50051"
 	}
 
-	dialCtx, dialCancel := context.WithTimeout(r.Context(), 5*time.Second)
-	defer dialCancel()
-	conn, err := grpc.DialContext(dialCtx, targetAddr,
+	conn, err := grpc.NewClient(targetAddr,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
-		grpc.WithBlock(),
 	)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("failed to connect to leader at %s: %v", targetAddr, err), http.StatusBadGateway)
@@ -568,11 +565,8 @@ func (g *HTTPGateway) handleCancelWorkflow(w http.ResponseWriter, r *http.Reques
 		targetAddr = "127.0.0.1:50051"
 	}
 
-	dialCtx, dialCancel := context.WithTimeout(r.Context(), 5*time.Second)
-	defer dialCancel()
-	conn, err := grpc.DialContext(dialCtx, targetAddr,
+	conn, err := grpc.NewClient(targetAddr,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
-		grpc.WithBlock(),
 	)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("failed to dial leader: %v", err), http.StatusBadGateway)

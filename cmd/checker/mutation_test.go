@@ -187,7 +187,7 @@ func TestMutation_NoLostTasksViolation(t *testing.T) {
 	wfDump := []WorkflowDumpItem{
 		{
 			Workflow: &pb.Workflow{
-				Spec: &pb.WorkflowSpec{Id: wfID, FailurePolicy: pb.FailurePolicy_FAILURE_POLICY_FAIL_FAST, Tasks: []*pb.TaskSpec{taskFetch.Spec, taskProcess.Spec}},
+				Spec:   &pb.WorkflowSpec{Id: wfID, FailurePolicy: pb.FailurePolicy_FAILURE_POLICY_FAIL_FAST, Tasks: []*pb.TaskSpec{taskFetch.Spec, taskProcess.Spec}},
 				Status: &pb.WorkflowStatus{Id: wfID, State: pb.WorkflowState_WORKFLOW_STATE_FAILED},
 			},
 			Tasks: []*pb.Task{taskFetch, taskProcess},
@@ -227,7 +227,7 @@ func TestMutation_WorkflowTerminationViolation(t *testing.T) {
 	wfDump := []WorkflowDumpItem{
 		{
 			Workflow: &pb.Workflow{
-				Spec: &pb.WorkflowSpec{Id: wfID, FailurePolicy: pb.FailurePolicy_FAILURE_POLICY_FAIL_FAST, Tasks: []*pb.TaskSpec{taskFetch.Spec, taskProcess.Spec}},
+				Spec:   &pb.WorkflowSpec{Id: wfID, FailurePolicy: pb.FailurePolicy_FAILURE_POLICY_FAIL_FAST, Tasks: []*pb.TaskSpec{taskFetch.Spec, taskProcess.Spec}},
 				Status: &pb.WorkflowStatus{Id: wfID, State: pb.WorkflowState_WORKFLOW_STATE_SUCCEEDED}, // Inconsistent state!
 			},
 			Tasks: []*pb.Task{taskFetch, taskProcess},

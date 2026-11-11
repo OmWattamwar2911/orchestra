@@ -17,7 +17,6 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	pb "orchestra/api/proto/orchestra/v1"
 	"orchestra/internal/checker"
-	"orchestra/internal/etcdstore"
 	"orchestra/internal/store"
 )
 
@@ -259,7 +258,7 @@ func executeSingleRun(
 
 	// 7. Run Invariant Verification
 	evidencePath := filepath.Join(runDir, "evidence.jsonl")
-	etcdStore := etcdstore.NewStore(etcdClient)
+	etcdStore := store.NewStore(etcdClient)
 	chk := checker.NewInvariantChecker(etcdStore, evidencePath)
 
 	vResult, err := chk.VerifyAll(context.Background())
@@ -349,12 +348,9 @@ func awaitClusterDrain(ctx context.Context, etcdClient *clientv3.Client, submitt
 func connectToLeader(ctx context.Context, addrs []string) (*grpc.ClientConn, pb.OrchestratorServiceClient, string, error) {
 	var lastErr error
 	for _, addr := range addrs {
-		dialCtx, cancel := context.WithTimeout(ctx, 1500*time.Millisecond)
-		conn, err := grpc.DialContext(dialCtx, addr,
+		conn, err := grpc.NewClient(addr,
 			grpc.WithTransportCredentials(insecure.NewCredentials()),
-			grpc.WithBlock(),
 		)
-		cancel()
 		if err != nil {
 			lastErr = err
 			continue

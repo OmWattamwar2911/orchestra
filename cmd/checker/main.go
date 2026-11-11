@@ -11,24 +11,24 @@ import (
 )
 
 type AggregateReport struct {
-	TotalRuns             int              `json:"total_runs"`
-	PassedRuns            int              `json:"passed_runs"`
-	FailedRuns            int              `json:"failed_runs"`
-	TotalWorkflows        int              `json:"total_workflows"`
-	TotalTasks            int              `json:"total_tasks"`
-	TotalEvents           int              `json:"total_events"`
-	TotalEvidenceRecords  int              `json:"total_evidence_records"`
-	TotalFaults           map[string]int   `json:"total_faults"`
-	TotalLeaderFailovers  int              `json:"total_leader_failovers"`
-	MeanFailoverMs        float64          `json:"mean_failover_ms"`
-	MaxFailoverMs         int64            `json:"max_failover_ms"`
-	TotalDuplicateExecs   int              `json:"total_duplicate_executions"`
-	DependencyViolations  int              `json:"dependency_violations"`
-	SingleCommitViolations int             `json:"single_commit_violations"`
-	NoLostTasksViolations int              `json:"no_lost_tasks_violations"`
-	WorkflowTermViolations int             `json:"workflow_term_violations"`
-	FencingViolations     int              `json:"fencing_violations"`
-	RunReports            []*CheckerReport `json:"run_reports"`
+	TotalRuns              int              `json:"total_runs"`
+	PassedRuns             int              `json:"passed_runs"`
+	FailedRuns             int              `json:"failed_runs"`
+	TotalWorkflows         int              `json:"total_workflows"`
+	TotalTasks             int              `json:"total_tasks"`
+	TotalEvents            int              `json:"total_events"`
+	TotalEvidenceRecords   int              `json:"total_evidence_records"`
+	TotalFaults            map[string]int   `json:"total_faults"`
+	TotalLeaderFailovers   int              `json:"total_leader_failovers"`
+	MeanFailoverMs         float64          `json:"mean_failover_ms"`
+	MaxFailoverMs          int64            `json:"max_failover_ms"`
+	TotalDuplicateExecs    int              `json:"total_duplicate_executions"`
+	DependencyViolations   int              `json:"dependency_violations"`
+	SingleCommitViolations int              `json:"single_commit_violations"`
+	NoLostTasksViolations  int              `json:"no_lost_tasks_violations"`
+	WorkflowTermViolations int              `json:"workflow_term_violations"`
+	FencingViolations      int              `json:"fencing_violations"`
+	RunReports             []*CheckerReport `json:"run_reports"`
 }
 
 func main() {

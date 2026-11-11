@@ -18,20 +18,20 @@ import (
 
 // RunSummary captures comprehensive statistics and invariant verification for a chaos run.
 type RunSummary struct {
-	Seed               int64     `json:"seed"`
-	WorkflowsSubmitted int       `json:"workflows_submitted"`
-	WorkflowsSucceeded int       `json:"workflows_succeeded"`
-	WorkflowsFailed    int       `json:"workflows_failed"`
-	TotalTasks         int       `json:"total_tasks"`
-	TasksCompleted     int       `json:"tasks_completed"`
-	TasksFailed        int       `json:"tasks_failed"`
-	TasksDeadLetter    int       `json:"tasks_dead_letter"`
-	FaultsInjected     int       `json:"faults_injected"`
-	DurationMs         int64     `json:"duration_ms"`
-	DrainDurationMs    int64     `json:"drain_duration_ms"`
-	VerificationPassed bool      `json:"verification_passed"`
-	Violations         []string  `json:"violations,omitempty"`
-	Notes              string    `json:"notes,omitempty"`
+	Seed               int64    `json:"seed"`
+	WorkflowsSubmitted int      `json:"workflows_submitted"`
+	WorkflowsSucceeded int      `json:"workflows_succeeded"`
+	WorkflowsFailed    int      `json:"workflows_failed"`
+	TotalTasks         int      `json:"total_tasks"`
+	TasksCompleted     int      `json:"tasks_completed"`
+	TasksFailed        int      `json:"tasks_failed"`
+	TasksDeadLetter    int      `json:"tasks_dead_letter"`
+	FaultsInjected     int      `json:"faults_injected"`
+	DurationMs         int64    `json:"duration_ms"`
+	DrainDurationMs    int64    `json:"drain_duration_ms"`
+	VerificationPassed bool     `json:"verification_passed"`
+	Violations         []string `json:"violations,omitempty"`
+	Notes              string   `json:"notes,omitempty"`
 }
 
 type Collector struct {

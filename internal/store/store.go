@@ -61,6 +61,11 @@ func New(client *clientv3.Client, logger *slog.Logger) *Store {
 	return s
 }
 
+// NewStore initializes a new Store with a default logger.
+func NewStore(client *clientv3.Client) *Store {
+	return New(client, nil)
+}
+
 // Client returns the underlying etcd client.
 func (s *Store) Client() *clientv3.Client {
 	return s.client

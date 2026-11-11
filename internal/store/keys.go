@@ -3,12 +3,12 @@ package store
 import "fmt"
 
 const (
-	PrefixRoot        = "/orchestra"
-	ElectionKey       = "/orchestra/leader/election"
-	PrefixWorkers     = "/orchestra/workers"
-	PrefixWorkflows   = "/orchestra/workflows"
-	PrefixTasks       = "/orchestra/tasks"
-	PrefixEvents      = "/orchestra/events"
+	PrefixRoot      = "/orchestra"
+	ElectionKey     = "/orchestra/leader/election"
+	PrefixWorkers   = "/orchestra/workers"
+	PrefixWorkflows = "/orchestra/workflows"
+	PrefixTasks     = "/orchestra/tasks"
+	PrefixEvents    = "/orchestra/events"
 )
 
 // WorkflowKey returns the etcd key for a workflow definition and status: /orchestra/workflows/{id}

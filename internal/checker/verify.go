@@ -7,8 +7,8 @@ import (
 
 	pb "orchestra/api/proto/orchestra/v1"
 	"orchestra/internal/dag"
-	"orchestra/internal/etcdstore"
 	"orchestra/internal/evidence"
+	"orchestra/internal/store"
 )
 
 // InvariantReport details the verification outcome for a single workflow.
@@ -36,12 +36,12 @@ type VerificationResult struct {
 
 // InvariantChecker validates final state against independent worker evidence logs.
 type InvariantChecker struct {
-	store          *etcdstore.Store
+	store          *store.Store
 	evidenceReader *evidence.Reader
 }
 
 // NewInvariantChecker creates an invariant checker.
-func NewInvariantChecker(store *etcdstore.Store, evidenceLogPath string) *InvariantChecker {
+func NewInvariantChecker(store *store.Store, evidenceLogPath string) *InvariantChecker {
 	return &InvariantChecker{
 		store:          store,
 		evidenceReader: evidence.NewReader(evidenceLogPath),
@@ -79,10 +79,10 @@ func (c *InvariantChecker) VerifyAll(ctx context.Context) (*VerificationResult, 
 	}
 
 	result := &VerificationResult{
-		Timestamp:       time.Now(),
-		AllPassed:       true,
-		TotalWorkflows:  len(workflows),
-		Reports:         make([]InvariantReport, 0, len(workflows)),
+		Timestamp:      time.Now(),
+		AllPassed:      true,
+		TotalWorkflows: len(workflows),
+		Reports:        make([]InvariantReport, 0, len(workflows)),
 	}
 
 	for _, wf := range workflows {
