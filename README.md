@@ -14,10 +14,6 @@
 
 > **A distributed workflow scheduler that proves, with an independent chaos checker, it survives crashes without violating task order or losing tasks.**
 
-<p align="center">
-  <img src="docs/demo.gif" alt="Orchestra Demo Walkthrough: Poster Modernist UI, Live Simulation, and Chaos Cockpit" width="100%">
-</p>
-
 ---
 
 ## Table of Contents
